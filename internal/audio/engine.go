@@ -24,18 +24,52 @@ type Engine struct {
 	isPlaying   bool
 	volume      float64
 	onEnd       func()
+	onNext      func()
+	onPrev      func()
 }
 
 func NewEngine() *Engine {
-	return &Engine{
+	e := &Engine{
 		volume: 0.8,
 	}
+
+	// Signature callback: func(cmd mygo.MediaCommand, position time.Duration)
+	mygo.NowPlaying.OnCommand(func(cmd mygo.MediaCommand, position time.Duration) {
+		switch cmd {
+		case mygo.MediaPlay:
+			if !e.IsPlaying() {
+				e.TogglePlay()
+			}
+		case mygo.MediaPause:
+			if e.IsPlaying() {
+				e.TogglePlay()
+			}
+		case mygo.MediaNext:
+			e.mu.Lock()
+			nextFn := e.onNext
+			e.mu.Unlock()
+			if nextFn != nil {
+				nextFn()
+			}
+		case mygo.MediaPrevious:
+			e.mu.Lock()
+			prevFn := e.onPrev
+			e.mu.Unlock()
+			if prevFn != nil {
+				prevFn()
+			}
+		}
+	})
+
+	return e
 }
 
-func (e *Engine) SetOnEnd(fn func()) {
+func (e *Engine) SetHandlers(onEnd, onNext, onPrev func()) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.onEnd = fn
+	e.onEnd = onEnd
+	e.onNext = onNext
+	e.onPrev = onPrev
 }
 
 func (e *Engine) Play(t model.Track) error {
@@ -60,13 +94,13 @@ func (e *Engine) Play(t model.Track) error {
 
 	f, err = transcodeToWav(t.Path)
 	if err != nil {
-		return fmt.Errorf("gagal transcode audio: %w", err)
+		return fmt.Errorf("transcode audio gagal: %w", err)
 	}
 
 	stream, err := audio.OpenStream(f)
 	if err != nil {
 		f.Close()
-		return fmt.Errorf("decode audio gagal: %w", err)
+		return fmt.Errorf("decode audio stream gagal: %w", err)
 	}
 
 	e.setupPlayer(stream, f, t)
@@ -87,11 +121,13 @@ func (e *Engine) setupPlayer(stream *audio.Player, f *os.File, t model.Track) {
 	e.player.Play()
 	e.isPlaying = true
 
-	// Hook saat lagu selesai diputar
 	e.player.OnEnd(func() {
 		e.mu.Lock()
 		e.isPlaying = false
-		handler := e.onEnd
+		handler := e.onNext
+		if handler == nil {
+			handler = e.onEnd
+		}
 		e.mu.Unlock()
 
 		mygo.NowPlaying.Sync()
@@ -100,13 +136,15 @@ func (e *Engine) setupPlayer(stream *audio.Player, f *os.File, t model.Track) {
 		}
 	})
 
-	// Integrasi GNOME Shell MPRIS
 	mygo.NowPlaying.Control(e.player)
+
+	// Artwork langsung menerima raw []byte
 	mygo.NowPlaying.Set(mygo.NowPlayingInfo{
 		Title:    t.Title,
 		Artist:   t.Artist,
 		Album:    t.Album,
-		Commands: mygo.MediaNext | mygo.MediaPrevious,
+		Artwork:  t.CoverData,
+		Commands: mygo.MediaPlay | mygo.MediaPause | mygo.MediaNext | mygo.MediaPrevious,
 	})
 	mygo.NowPlaying.Sync()
 }
@@ -120,12 +158,10 @@ func transcodeToWav(srcPath string) (*os.File, error) {
 	hash := fmt.Sprintf("%x", md5.Sum([]byte(srcPath)))
 	tempWav := filepath.Join(os.TempDir(), fmt.Sprintf("mygo_cache_%s.wav", hash))
 
-	// Pakai cache jika file hasil transcode sudah pernah dibuat
 	if info, err := os.Stat(tempWav); err == nil && info.Size() > 100 {
 		return os.Open(tempWav)
 	}
 
-	// Transcode ke PCM 16-bit 44.1kHz Stereo WAV
 	cmd := exec.Command("ffmpeg", "-y", "-v", "error", "-i", srcPath, "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2", tempWav)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("ffmpeg error: %w (%s)", err, string(out))

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
@@ -29,13 +30,11 @@ type AppState struct {
 	Engine       *audio.Engine
 	Window       *mygo.Window
 
+	DarkMode       bool
 	ViewMode       string
 	SelectedArtist string
 	SelectedAlbum  string
 	SearchQuery    string
-
-	CurrentPage int
-	PageSize    int
 
 	Volume   float64
 	Progress float64
@@ -50,24 +49,39 @@ func NewAppState() *AppState {
 		Tracks:         tracks,
 		CurrentIndex:   -1,
 		Engine:         audio.NewEngine(),
+		DarkMode:       false,
 		ViewMode:       "tracks",
 		SelectedArtist: "",
 		SelectedAlbum:  "",
 		SearchQuery:    "",
-		CurrentPage:    0,
-		PageSize:       9,
 		Volume:         0.8,
 	}
 
-	app.Engine.SetOnEnd(func() {
-		app.NextTrack()
-	})
+	app.Engine.SetHandlers(
+		func() {
+			if app.Repeat {
+				if curr := app.CurrentTrack(); curr != nil {
+					app.PlayTrack(*curr)
+					return
+				}
+			}
+			app.NextTrack()
+		},
+		func() { app.NextTrack() },
+		func() { app.PrevTrack() },
+	)
 
 	return app
 }
 
 func (s *AppState) SetWindow(w *mygo.Window) {
 	s.Window = w
+}
+
+func (s *AppState) ToggleDarkMode() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.DarkMode = !s.DarkMode
 }
 
 func (s *AppState) FilteredTracks() []model.Track {
@@ -178,7 +192,6 @@ func (s *AppState) ClearFilter() {
 	s.SelectedArtist = ""
 	s.SelectedAlbum = ""
 	s.SearchQuery = ""
-	s.CurrentPage = 0
 	s.ViewMode = "tracks"
 }
 
@@ -217,19 +230,69 @@ func (s *AppState) TogglePlay() {
 }
 
 func (s *AppState) NextTrack() {
+	tracks := s.FilteredTracks()
 	if len(s.Tracks) == 0 {
+		tracks = s.Tracks
+	}
+	if len(tracks) == 0 {
 		return
 	}
-	next := (s.CurrentIndex + 1) % len(s.Tracks)
-	s.PlayTrack(s.Tracks[next])
+
+	curr := s.CurrentTrack()
+	currIdx := -1
+	if curr != nil {
+		for i, t := range tracks {
+			if t.Path == curr.Path {
+				currIdx = i
+				break
+			}
+		}
+	}
+
+	if s.Shuffle && len(tracks) > 1 {
+		nextIdx := currIdx
+		for nextIdx == currIdx {
+			nextIdx = rand.Intn(len(tracks))
+		}
+		s.PlayTrack(tracks[nextIdx])
+		return
+	}
+
+	nextIdx := (currIdx + 1) % len(tracks)
+	s.PlayTrack(tracks[nextIdx])
 }
 
 func (s *AppState) PrevTrack() {
+	tracks := s.FilteredTracks()
 	if len(s.Tracks) == 0 {
+		tracks = s.Tracks
+	}
+	if len(tracks) == 0 {
 		return
 	}
-	prev := (s.CurrentIndex - 1 + len(s.Tracks)) % len(s.Tracks)
-	s.PlayTrack(s.Tracks[prev])
+
+	curr := s.CurrentTrack()
+	currIdx := -1
+	if curr != nil {
+		for i, t := range tracks {
+			if t.Path == curr.Path {
+				currIdx = i
+				break
+			}
+		}
+	}
+
+	if s.Shuffle && len(tracks) > 1 {
+		prevIdx := currIdx
+		for prevIdx == currIdx {
+			prevIdx = rand.Intn(len(tracks))
+		}
+		s.PlayTrack(tracks[prevIdx])
+		return
+	}
+
+	prevIdx := (currIdx - 1 + len(tracks)) % len(tracks)
+	s.PlayTrack(tracks[prevIdx])
 }
 
 func (s *AppState) Seek(prog float64) {

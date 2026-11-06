@@ -3,15 +3,24 @@ package ui
 import (
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/egoist/mygo"
 	"music-player/internal/audio"
 	"music-player/internal/library"
 	"music-player/internal/model"
+
+	"github.com/dhowden/tag"
+	"github.com/egoist/mygo"
 )
+
+type CardItem struct {
+	Name      string
+	Subtext   string
+	CoverData []byte
+}
 
 type AppState struct {
 	mu           sync.Mutex
@@ -88,44 +97,81 @@ func (s *AppState) FilteredTracks() []model.Track {
 	return result
 }
 
-func (s *AppState) GetArtists() []string {
+func (s *AppState) GetArtistCards() []CardItem {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	seen := make(map[string]bool)
-	var list []string
+	type meta struct {
+		count int
+		cover []byte
+	}
+	group := make(map[string]*meta)
+	var names []string
+
 	for _, t := range s.Tracks {
 		name := strings.TrimSpace(t.Artist)
 		if name == "" {
 			name = "Unknown Artist"
 		}
-		if !seen[name] {
-			seen[name] = true
-			list = append(list, name)
+		if _, exists := group[name]; !exists {
+			group[name] = &meta{count: 0, cover: nil}
+			names = append(names, name)
+		}
+		group[name].count++
+		if group[name].cover == nil && len(t.CoverData) > 0 {
+			group[name].cover = t.CoverData
 		}
 	}
-	sort.Strings(list)
-	return list
+	sort.Strings(names)
+
+	var cards []CardItem
+	for _, n := range names {
+		cards = append(cards, CardItem{
+			Name:      n,
+			Subtext:   fmt.Sprintf("%d songs", group[n].count),
+			CoverData: group[n].cover,
+		})
+	}
+	return cards
 }
 
-func (s *AppState) GetAlbums() []string {
+func (s *AppState) GetAlbumCards() []CardItem {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	seen := make(map[string]bool)
-	var list []string
+	type meta struct {
+		artist string
+		count  int
+		cover  []byte
+	}
+	group := make(map[string]*meta)
+	var names []string
+
 	for _, t := range s.Tracks {
 		name := strings.TrimSpace(t.Album)
 		if name == "" {
 			name = "Unknown Album"
 		}
-		if !seen[name] {
-			seen[name] = true
-			list = append(list, name)
+		if _, exists := group[name]; !exists {
+			group[name] = &meta{artist: t.Artist, count: 0, cover: nil}
+			names = append(names, name)
+		}
+		group[name].count++
+		if group[name].cover == nil && len(t.CoverData) > 0 {
+			group[name].cover = t.CoverData
 		}
 	}
-	sort.Strings(list)
-	return list
+	sort.Strings(names)
+
+	var cards []CardItem
+	for _, n := range names {
+		cards = append(cards, CardItem{
+			Name:      n,
+			Subtext:   group[n].artist,
+			CoverData: group[n].cover,
+		})
+	}
+	return cards
 }
 
 func (s *AppState) ClearFilter() {
@@ -141,6 +187,17 @@ func (s *AppState) PlayTrack(track model.Track) {
 	for i, t := range s.Tracks {
 		if t.Path == track.Path {
 			s.CurrentIndex = i
+			if len(s.Tracks[i].CoverData) == 0 {
+				if f, err := os.Open(t.Path); err == nil {
+					if m, err := tag.ReadFrom(f); err == nil {
+						if pic := m.Picture(); pic != nil {
+							s.Tracks[i].CoverData = pic.Data
+						}
+					}
+					f.Close()
+				}
+			}
+			track = s.Tracks[i]
 			break
 		}
 	}

@@ -41,6 +41,24 @@ func customIconButton(c *ui.Context, w, h float32, active bool, drawIcon func(p 
 	return btn
 }
 
+// Helper gambar cover art: tampilkan gambar jika ada, fallback ke vektor not jika tidak ada
+func renderCoverBox(c *ui.Context, coverData []byte, size float32, radius float32) {
+	box := ui.Row(c).Width(size).Height(size).Border(1, colorBlack).Radius(radius).Clip().Center()
+	if len(coverData) > 0 {
+		img, err := ui.DecodeImage(coverData)
+		if err == nil {
+			box.Children(func() {
+				ui.Image(c, img).Width(size).Height(size)
+			})
+			return
+		}
+	}
+	// Fallback ke vektor not lagu
+	box.Draw(func(p *ui.Painter, r ui.Rect) {
+		drawNoteIcon(p, r, colorBlack)
+	})
+}
+
 // -------------------------------------------------------------
 // Vektor Ikon Presisi
 // -------------------------------------------------------------
@@ -180,16 +198,13 @@ func customSlider(c *ui.Context, val *float64, min, max float64) ui.Element {
 // -------------------------------------------------------------
 func (s *AppState) View(c *ui.Context) {
 	ui.Column(c).Fill().Background(colorWhite).Border(2, colorBlack).Radius(0).Children(func() {
-		// 1. Header Atas (Tinggi tetap, tidak boleh menyusut)
 		renderTopBar(c, s)
 
-		// 2. Konten Tengah (MinHeight 0 agar scroll aktif dan tidak mendorong footer)
 		ui.Row(c).Fill().MinHeight(0).Padding(10).Gap(10).Children(func() {
 			renderSidebar(c, s)
 			renderMainContent(c, s)
 		})
 
-		// 3. Playback Bar Bawah (Tinggi tetap, terkunci di bawah layar)
 		renderBottomPlaybackBar(c, s)
 	})
 }
@@ -255,7 +270,6 @@ func renderSidebar(c *ui.Context, s *AppState) {
 			}
 		}
 
-		// Spacer pengisi sisa ruang ke bawah
 		ui.Column(c).Fill().MinHeight(0)
 	})
 }
@@ -274,69 +288,160 @@ func renderMainContent(c *ui.Context, s *AppState) {
 }
 
 // -------------------------------------------------------------
-// Daftar Artis (Scrollable)
+// By Artists: Grid 4 Card ke Samping
 // -------------------------------------------------------------
 func renderArtistsList(c *ui.Context, s *AppState) {
-	artists := s.GetArtists()
+	cards := s.GetArtistCards()
 
-	ui.Row(c).FillWidth().Height(24).Children(func() {
-		ui.Text(c, fmt.Sprintf("ARTISTS DIRECTORY (%d)", len(artists))).FontSize(12).Bold().TextColor(colorBlack)
+	ui.Row(c).FillWidth().Height(24).Shrink(0).Children(func() {
+		ui.Text(c, fmt.Sprintf("ARTISTS DIRECTORY (%d)", len(cards))).FontSize(12).Bold().TextColor(colorBlack)
 	})
 
-	// ui.Scroll sebagai pembungkus scroll vertikal
-	ui.Scroll(c).Fill().Children(func() {
-		ui.Column(c).FillWidth().Gap(4).Children(func() {
-			for _, art := range artists {
-				name := art
-				isSelected := s.SelectedArtist == name
-				if customButton(c, name, isSelected).FillWidth().Height(32).Clicked() {
-					s.SelectedArtist = name
-					s.SelectedAlbum = ""
-					s.ViewMode = "tracks"
+	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			// Susun 4 card per baris
+			total := len(cards)
+			for i := 0; i < total; i += 4 {
+				end := i + 4
+				if end > total {
+					end = total
 				}
+				rowCards := cards[i:end]
+
+				ui.Row(c).FillWidth().Gap(10).Children(func() {
+					for _, item := range rowCards {
+						card := item
+						isSelected := s.SelectedArtist == card.Name
+
+						cardBg := colorWhite
+						cardFg := colorBlack
+						if isSelected {
+							cardBg = colorBlack
+							cardFg = colorWhite
+						}
+
+						displayName := card.Name
+						if len([]rune(displayName)) > 22 {
+							displayName = string([]rune(displayName)[:20]) + "..."
+						}
+
+						// Card Container
+						cardBtn := ui.Button(c, "").
+							Grow(1).
+							Basis(0).
+							MinWidth(0).
+							Height(185).
+							Border(1, colorBlack).
+							Radius(8).
+							Background(cardBg)
+
+						cardBtn.Children(func() {
+							ui.Column(c).Fill().Padding(8).Gap(6).Center().Children(func() {
+								renderCoverBox(c, card.CoverData, 100, 6)
+								ui.Text(c, displayName).FontSize(11).Bold().TextColor(cardFg)
+								ui.Text(c, card.Subtext).FontSize(9).TextColor(cardFg)
+							})
+						})
+
+						if cardBtn.Clicked() {
+							s.SelectedArtist = card.Name
+							s.SelectedAlbum = ""
+							s.ViewMode = "tracks"
+						}
+					}
+
+					// Padding pengisi agar baris terakhir tetap rata kiri jika kurang dari 4
+					for k := 0; k < 4-len(rowCards); k++ {
+						ui.Row(c).FillWidth()
+					}
+				})
 			}
 		})
 	})
 }
 
 // -------------------------------------------------------------
-// Daftar Album (Scrollable)
+// By Albums: Grid 4 Card ke Samping
 // -------------------------------------------------------------
 func renderAlbumsList(c *ui.Context, s *AppState) {
-	albums := s.GetAlbums()
+	cards := s.GetAlbumCards()
 
-	ui.Row(c).FillWidth().Height(24).Children(func() {
-		ui.Text(c, fmt.Sprintf("ALBUMS DIRECTORY (%d)", len(albums))).FontSize(12).Bold().TextColor(colorBlack)
+	ui.Row(c).FillWidth().Height(24).Shrink(0).Children(func() {
+		ui.Text(c, fmt.Sprintf("ALBUMS DIRECTORY (%d)", len(cards))).FontSize(12).Bold().TextColor(colorBlack)
 	})
 
-	// ui.Scroll sebagai pembungkus scroll vertikal
-	ui.Scroll(c).Fill().Children(func() {
-		ui.Column(c).FillWidth().Gap(4).Children(func() {
-			for _, alb := range albums {
-				name := alb
-				isSelected := s.SelectedAlbum == name
-				if customButton(c, name, isSelected).FillWidth().Height(32).Clicked() {
-					s.SelectedAlbum = name
-					s.SelectedArtist = ""
-					s.ViewMode = "tracks"
+	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			total := len(cards)
+			for i := 0; i < total; i += 4 {
+				end := i + 4
+				if end > total {
+					end = total
 				}
+				rowCards := cards[i:end]
+
+				ui.Row(c).FillWidth().Gap(10).Children(func() {
+					for _, item := range rowCards {
+						card := item
+						isSelected := s.SelectedAlbum == card.Name
+
+						cardBg := colorWhite
+						cardFg := colorBlack
+						if isSelected {
+							cardBg = colorBlack
+							cardFg = colorWhite
+						}
+
+						displayName := card.Name
+						if len([]rune(displayName)) > 22 {
+							displayName = string([]rune(displayName)[:20]) + "..."
+						}
+
+						// Card Container
+						cardBtn := ui.Button(c, "").
+							Grow(1).
+							Basis(0).
+							MinWidth(0).
+							Height(185).
+							Border(1, colorBlack).
+							Radius(8).
+							Background(cardBg)
+
+						cardBtn.Children(func() {
+							ui.Column(c).Fill().Padding(8).Gap(6).Center().Children(func() {
+								renderCoverBox(c, card.CoverData, 100, 6)
+								ui.Text(c, displayName).FontSize(11).Bold().TextColor(cardFg)
+								ui.Text(c, card.Subtext).FontSize(9).TextColor(cardFg)
+							})
+						})
+
+						if cardBtn.Clicked() {
+							s.SelectedAlbum = card.Name
+							s.SelectedArtist = ""
+							s.ViewMode = "tracks"
+						}
+					}
+
+					for k := 0; k < 4-len(rowCards); k++ {
+						ui.Row(c).FillWidth()
+					}
+				})
 			}
 		})
 	})
 }
 
 // -------------------------------------------------------------
-// Daftar Seluruh Lagu (Scrollable)
+// All Tracks: Daftar Lagu
 // -------------------------------------------------------------
 func renderTracksList(c *ui.Context, s *AppState) {
 	tracks := s.FilteredTracks()
 
-	ui.Row(c).FillWidth().Height(24).Center().Children(func() {
+	ui.Row(c).FillWidth().Height(24).Shrink(0).Center().Children(func() {
 		ui.Text(c, fmt.Sprintf("TRACKS (%d items)", len(tracks))).FontSize(12).Bold().TextColor(colorBlack)
 	})
 
-	// ui.Scroll sebagai pembungkus scroll vertikal daftar lagu
-	ui.Scroll(c).Fill().Children(func() {
+	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
 		ui.Column(c).FillWidth().Gap(4).Children(func() {
 			if len(tracks) == 0 {
 				ui.Row(c).Fill().Center().Children(func() {
@@ -359,20 +464,24 @@ func renderTracksList(c *ui.Context, s *AppState) {
 					btnBorderColor = colorWhite
 				}
 
-				ui.Row(c).FillWidth().Height(36).Padding(4, 8).Border(1, colorBlack).Radius(0).Background(rowBg).Center().Children(func() {
+				ui.Row(c).FillWidth().Height(36).Padding(4, 10).Border(1, colorBlack).Radius(0).Background(rowBg).Center().Children(func() {
+					// 1. Nomor Indeks [01], [*] jika aktif
 					prefix := fmt.Sprintf("[%02d]", rowNum)
 					if isSelected {
 						prefix = "[*]"
 					}
 					ui.Text(c, prefix).Width(38).FontSize(11).Bold().TextColor(textColor)
 
+					// 2. Judul Lagu & Artis
 					ui.Column(c).FillWidth().Children(func() {
 						ui.Text(c, track.Title).FontSize(12).Bold().TextColor(textColor)
 						ui.Text(c, track.Artist).FontSize(10).TextColor(textColor)
 					})
 
-					ui.Text(c, track.Album).Width(160).FontSize(10).TextColor(textColor)
+					// 3. Nama Album
+					ui.Text(c, track.Album).Width(180).FontSize(10).TextColor(textColor)
 
+					// 4. Tombol Aksi Ikon Play/Pause
 					if isSelected {
 						playIconDraw := drawPause
 						if !s.Engine.IsPlaying() {
@@ -398,6 +507,9 @@ func renderTracksList(c *ui.Context, s *AppState) {
 	})
 }
 
+// -------------------------------------------------------------
+// Playback Bar di Bawah (Cover Art Terhubung)
+// -------------------------------------------------------------
 func renderBottomPlaybackBar(c *ui.Context, s *AppState) {
 	if s.Engine.IsPlaying() {
 		s.Progress = s.Engine.Progress()
@@ -406,15 +518,14 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState) {
 	current := s.CurrentTrack()
 
 	ui.Row(c).FillWidth().Height(72).Shrink(0).Padding(8, 14).Border(1, colorBlack).Radius(0).Background(colorWhite).Center().Children(func() {
-		// --- SISI KIRI: Info Lagu (Kotak Cover + Judul + Artis Tanpa Label & Tanpa Tombol Like) ---
-		ui.Row(c).Width(240).Center().Gap(10).Children(func() {
-			// Kotak Ikon Not Musik
-			artBox := ui.Row(c).Width(40).Height(40).Border(1, colorBlack).Radius(0).Center()
-			artBox.Draw(func(p *ui.Painter, r ui.Rect) {
-				drawNoteIcon(p, r, colorBlack)
-			})
+		// --- KIRI: Cover Art + Info Lagu ---
+		ui.Row(c).Width(250).Center().Gap(10).Children(func() {
+			var cover []byte
+			if current != nil {
+				cover = current.CoverData
+			}
+			renderCoverBox(c, cover, 42, 6)
 
-			// Detail Judul Lagu & Artis
 			ui.Column(c).FillWidth().Children(func() {
 				title := "IDLE"
 				artist := "READY"
@@ -427,9 +538,8 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState) {
 			})
 		})
 
-		// --- SISI TENGAH: Kontrol Navigasi & Timeline Seekbar ---
+		// --- TENGAH: Kontrol Navigasi & Timeline Seekbar ---
 		ui.Column(c).FillWidth().Center().Gap(4).Children(func() {
-			// Tombol-tombol Playback
 			ui.Row(c).Center().Gap(6).Children(func() {
 				if customIconButton(c, 36, 26, s.Shuffle, drawShuffle).Clicked() {
 					s.Shuffle = !s.Shuffle
@@ -454,7 +564,6 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState) {
 				}
 			})
 
-			// Seekbar Timeline
 			ui.Row(c).FillWidth().Center().Padding(0, 16).Gap(8).Children(func() {
 				ui.Text(c, s.CurrentTimeString()).FontSize(10).Bold().TextColor(colorBlack)
 
@@ -467,7 +576,7 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState) {
 			})
 		})
 
-		// --- SISI KANAN: Kontrol Volume Slider ---
+		// --- KANAN: Volume Slider ---
 		ui.Row(c).Width(160).Right(0).Center().Gap(6).Children(func() {
 			ui.Text(c, "VOL:").FontSize(10).Bold().TextColor(colorBlack)
 

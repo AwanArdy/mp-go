@@ -52,6 +52,9 @@ func ScanMusicDir() ([]model.Track, error) {
 				if strings.TrimSpace(m.Album()) != "" {
 					t.Album = strings.TrimSpace(m.Album())
 				}
+				if pic := m.Picture(); pic != nil && len(pic.Data) > 0 {
+					t.CoverData = pic.Data
+				}
 			}
 			f.Close()
 		}

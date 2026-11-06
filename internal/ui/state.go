@@ -88,44 +88,6 @@ func (s *AppState) FilteredTracks() []model.Track {
 	return result
 }
 
-func (s *AppState) PaginatedTracks() ([]model.Track, int, int) {
-	filtered := s.FilteredTracks()
-	total := len(filtered)
-	if total == 0 {
-		return nil, 0, 0
-	}
-
-	totalPages := (total + s.PageSize - 1) / s.PageSize
-	if s.CurrentPage >= totalPages {
-		s.CurrentPage = totalPages - 1
-	}
-	if s.CurrentPage < 0 {
-		s.CurrentPage = 0
-	}
-
-	start := s.CurrentPage * s.PageSize
-	end := start + s.PageSize
-	if end > total {
-		end = total
-	}
-
-	return filtered[start:end], s.CurrentPage + 1, totalPages
-}
-
-func (s *AppState) NextPage() {
-	filtered := s.FilteredTracks()
-	totalPages := (len(filtered) + s.PageSize - 1) / s.PageSize
-	if s.CurrentPage < totalPages-1 {
-		s.CurrentPage++
-	}
-}
-
-func (s *AppState) PrevPage() {
-	if s.CurrentPage > 0 {
-		s.CurrentPage--
-	}
-}
-
 func (s *AppState) GetArtists() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()

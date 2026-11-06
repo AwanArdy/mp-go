@@ -1,0 +1,13 @@
+/build/
+/.mygo/
+mygo_windows_*.syso
+*.exe
+*.exe.manifest
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+.DS_Store
+.vscode/
+.idea/

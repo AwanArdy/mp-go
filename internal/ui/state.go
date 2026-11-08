@@ -36,6 +36,9 @@ type AppState struct {
 	SelectedAlbum  string
 	SearchQuery    string
 
+	ArtistCards []CardItem
+	AlbumCards  []CardItem
+
 	// State Lirik Lagu
 	LyricsLines    []library.LyricLine
 	LyricsStatus   string // "idle", "loading", "ready", "not_found"
@@ -64,6 +67,8 @@ func NewAppState() *AppState {
 		Volume:         0.8,
 	}
 
+	app.BuildLibraryCaches()
+
 	app.Engine.SetHandlers(
 		func() {
 			if app.Repeat {
@@ -79,6 +84,76 @@ func NewAppState() *AppState {
 	)
 
 	return app
+}
+
+func (s *AppState) BuildLibraryCaches() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	type metaArt struct {
+		count int
+		cover []byte
+	}
+	artGroup := make(map[string]*metaArt)
+	var artNames []string
+
+	for _, t := range s.Tracks {
+		name := strings.TrimSpace(t.Artist)
+		if name == "" {
+			name = "Unknown Artist"
+		}
+		if _, exists := artGroup[name]; !exists {
+			artGroup[name] = &metaArt{count: 0, cover: nil}
+			artNames = append(artNames, name)
+		}
+		artGroup[name].count++
+		if artGroup[name].cover == nil && len(t.CoverData) > 0 {
+			artGroup[name].cover = t.CoverData
+		}
+	}
+	sort.Strings(artNames)
+
+	s.ArtistCards = make([]CardItem, 0, len(artNames))
+	for _, n := range artNames {
+		s.ArtistCards = append(s.ArtistCards, CardItem{
+			Name:      n,
+			Subtext:   fmt.Sprintf("%d songs", artGroup[n].count),
+			CoverData: artGroup[n].cover,
+		})
+	}
+
+	type metaAlb struct {
+		artist string
+		count  int
+		cover  []byte
+	}
+	albGroup := make(map[string]*metaAlb)
+	var albNames []string
+
+	for _, t := range s.Tracks {
+		name := strings.TrimSpace(t.Album)
+		if name == "" {
+			name = "Unknown Album"
+		}
+		if _, exists := albGroup[name]; !exists {
+			albGroup[name] = &metaAlb{artist: t.Artist, count: 0, cover: nil}
+			albNames = append(albNames, name)
+		}
+		albGroup[name].count++
+		if albGroup[name].cover == nil && len(t.CoverData) > 0 {
+			albGroup[name].cover = t.CoverData
+		}
+	}
+	sort.Strings(albNames)
+
+	s.AlbumCards = make([]CardItem, 0, len(albNames))
+	for _, n := range albNames {
+		s.AlbumCards = append(s.AlbumCards, CardItem{
+			Name:      n,
+			Subtext:   albGroup[n].artist,
+			CoverData: albGroup[n].cover,
+		})
+	}
 }
 
 func (s *AppState) SetWindow(w *mygo.Window) {
@@ -151,78 +226,13 @@ func (s *AppState) FilteredTracks() []model.Track {
 func (s *AppState) GetArtistCards() []CardItem {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	type meta struct {
-		count int
-		cover []byte
-	}
-	group := make(map[string]*meta)
-	var names []string
-
-	for _, t := range s.Tracks {
-		name := strings.TrimSpace(t.Artist)
-		if name == "" {
-			name = "Unknown Artist"
-		}
-		if _, exists := group[name]; !exists {
-			group[name] = &meta{count: 0, cover: nil}
-			names = append(names, name)
-		}
-		group[name].count++
-		if group[name].cover == nil && len(t.CoverData) > 0 {
-			group[name].cover = t.CoverData
-		}
-	}
-	sort.Strings(names)
-
-	var cards []CardItem
-	for _, n := range names {
-		cards = append(cards, CardItem{
-			Name:      n,
-			Subtext:   fmt.Sprintf("%d songs", group[n].count),
-			CoverData: group[n].cover,
-		})
-	}
-	return cards
+	return s.ArtistCards
 }
 
 func (s *AppState) GetAlbumCards() []CardItem {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	type meta struct {
-		artist string
-		count  int
-		cover  []byte
-	}
-	group := make(map[string]*meta)
-	var names []string
-
-	for _, t := range s.Tracks {
-		name := strings.TrimSpace(t.Album)
-		if name == "" {
-			name = "Unknown Album"
-		}
-		if _, exists := group[name]; !exists {
-			group[name] = &meta{artist: t.Artist, count: 0, cover: nil}
-			names = append(names, name)
-		}
-		group[name].count++
-		if group[name].cover == nil && len(t.CoverData) > 0 {
-			group[name].cover = t.CoverData
-		}
-	}
-	sort.Strings(names)
-
-	var cards []CardItem
-	for _, n := range names {
-		cards = append(cards, CardItem{
-			Name:      n,
-			Subtext:   group[n].artist,
-			CoverData: group[n].cover,
-		})
-	}
-	return cards
+	return s.AlbumCards
 }
 
 func (s *AppState) ClearFilter() {

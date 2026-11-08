@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -14,36 +15,26 @@ var (
 	colorDarkGray  = ui.RGB(45, 45, 45)
 )
 
-// Helper tombol teks dengan efek inversi warna saat HOVER
 func customButton(c *ui.Context, label string, active bool, bg, fg ui.Color) ui.Element {
 	btn := ui.Button(c, label).Border(1, fg).Radius(0)
-
 	btnBg := bg
 	btnFg := fg
-
-	// Warna berbalik hanya saat kursor mouse berada di atas tombol (hover) atau saat aktif
 	if btn.Hovered() || active {
 		btnBg = fg
 		btnFg = bg
 	}
-
 	btn.Background(btnBg).TextColor(btnFg)
 	return btn
 }
 
-// Helper tombol ikon vektor dengan efek inversi warna saat HOVER
 func customIconButton(c *ui.Context, w, h float32, active bool, bg, fg ui.Color, drawIcon func(p *ui.Painter, r ui.Rect, fg ui.Color)) ui.Element {
 	btn := ui.Button(c, "").Width(w).Height(h).Border(1, fg).Radius(0)
-
 	btnBg := bg
 	btnFg := fg
-
-	// Warna berbalik hanya saat hover atau saat aktif
 	if btn.Hovered() || active {
 		btnBg = fg
 		btnFg = bg
 	}
-
 	btn.Background(btnBg)
 	btn.Draw(func(p *ui.Painter, r ui.Rect) {
 		if drawIcon != nil {
@@ -53,7 +44,6 @@ func customIconButton(c *ui.Context, w, h float32, active bool, bg, fg ui.Color,
 	return btn
 }
 
-// Helper cover art
 func renderCoverBox(c *ui.Context, coverData []byte, size float32, radius float32, fg ui.Color) {
 	box := ui.Row(c).Width(size).Height(size).Border(1, fg).Radius(radius).Clip().Center()
 	if len(coverData) > 0 {
@@ -70,7 +60,6 @@ func renderCoverBox(c *ui.Context, coverData []byte, size float32, radius float3
 	})
 }
 
-// Slider Monokrom
 func customSlider(c *ui.Context, val *float64, min, max float64, fg, muted ui.Color) ui.Element {
 	s := ui.SliderBase(c, val, min, max).Height(20).Radius(0)
 	ratio := float32((*val - min) / (max - min))
@@ -101,6 +90,25 @@ func customSlider(c *ui.Context, val *float64, min, max float64, fg, muted ui.Co
 // -------------------------------------------------------------
 // Vektor Ikon Monokrom
 // -------------------------------------------------------------
+func drawMic(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2 - 2
+
+	// 1. Kapsul kepala mikrofon
+	p.Fill(ui.Rect{X: cx - 3, Y: cy - 7, W: 6, H: 9}, fg, 2)
+
+	// 2. Kerangka dudukan U di sekeliling mikrofon
+	p.Fill(ui.Rect{X: cx - 5, Y: cy - 3, W: 1.5, H: 6}, fg, 0)
+	p.Fill(ui.Rect{X: cx + 3.5, Y: cy - 3, W: 1.5, H: 6}, fg, 0)
+	p.Fill(ui.Rect{X: cx - 5, Y: cy + 3, W: 10, H: 1.5}, fg, 0)
+
+	// 3. Tangkai tiang
+	p.Fill(ui.Rect{X: cx - 0.75, Y: cy + 4.5, W: 1.5, H: 4}, fg, 0)
+
+	// 4. Garis alas bawah
+	p.Fill(ui.Rect{X: cx - 4, Y: cy + 8.5, W: 8, H: 1.5}, fg, 0)
+}
+
 func drawMoon(p *ui.Painter, r ui.Rect, fg ui.Color) {
 	cx := r.X + r.W/2
 	cy := r.Y + r.H/2
@@ -237,7 +245,7 @@ func drawNoteIcon(p *ui.Painter, r ui.Rect, fg ui.Color) {
 }
 
 // -------------------------------------------------------------
-// Root View: Outline Layar Dihapus (Tanpa Frame Luar)
+// Root View
 // -------------------------------------------------------------
 func (s *AppState) View(c *ui.Context) {
 	themeBg := colorWhite
@@ -254,7 +262,6 @@ func (s *AppState) View(c *ui.Context) {
 		s.Progress = s.Engine.Progress()
 	}
 
-	// Border terluar dihilangkan agar tidak menjadi bingkai frame di sekeliling layar
 	ui.Column(c).Fill().Background(themeBg).Radius(0).Children(func() {
 		renderTopBar(c, s, themeBg, themeFg)
 
@@ -267,9 +274,6 @@ func (s *AppState) View(c *ui.Context) {
 	})
 }
 
-// -------------------------------------------------------------
-// 1. Header Bar
-// -------------------------------------------------------------
 func renderTopBar(c *ui.Context, s *AppState, bg, fg ui.Color) {
 	ui.Row(c).FillWidth().Height(46).Shrink(0).Padding(6, 12).Border(1, fg).Radius(0).Background(bg).Center().Gap(12).Children(func() {
 		ui.Row(c).Center().Gap(8).Children(func() {
@@ -310,9 +314,6 @@ func renderTopBar(c *ui.Context, s *AppState, bg, fg ui.Color) {
 	})
 }
 
-// -------------------------------------------------------------
-// 2. Sidebar Kiri
-// -------------------------------------------------------------
 func renderSidebar(c *ui.Context, s *AppState, bg, fg ui.Color) {
 	ui.Column(c).Width(220).FillHeight().MinHeight(0).Border(1, fg).Radius(0).Padding(10).Gap(8).Children(func() {
 		ui.Text(c, "NAVIGATION").FontSize(11).Bold().TextColor(fg)
@@ -349,7 +350,7 @@ func renderSidebar(c *ui.Context, s *AppState, bg, fg ui.Color) {
 }
 
 // -------------------------------------------------------------
-// 3. Konten Utama
+// 3. Konten Utama (Daftar Lagu / Artis / Album / Lirik)
 // -------------------------------------------------------------
 func renderMainContent(c *ui.Context, s *AppState, bg, fg ui.Color) {
 	ui.Column(c).Fill().FillHeight().MinHeight(0).Border(1, fg).Radius(0).Padding(10).Gap(8).Children(func() {
@@ -358,9 +359,188 @@ func renderMainContent(c *ui.Context, s *AppState, bg, fg ui.Color) {
 			renderArtistsList(c, s, bg, fg)
 		case "albums":
 			renderAlbumsList(c, s, bg, fg)
+		case "lyrics":
+			renderLyricsView(c, s, bg, fg)
 		default:
 			renderTracksList(c, s, bg, fg)
 		}
+	})
+}
+
+// -------------------------------------------------------------
+// Tampilan Lirik Lagu Tersinkronisasi
+// -------------------------------------------------------------
+func renderLyricsView(c *ui.Context, s *AppState, bg, fg ui.Color) {
+	current := s.CurrentTrack()
+
+	// 1. Header Bar Lirik
+	ui.Row(c).FillWidth().Height(26).Shrink(0).Center().Children(func() {
+		title := "NO TRACK PLAYING"
+		if current != nil {
+			title = fmt.Sprintf("LYRICS: %s — %s", current.Title, current.Artist)
+		}
+		ui.Text(c, title).FontSize(11).Bold().TextColor(fg)
+
+		ui.Row(c).FillWidth().Right(0).Children(func() {
+			if customButton(c, "BACK TO TRACKS", false, bg, fg).Height(24).Clicked() {
+				s.ViewMode = "tracks"
+			}
+		})
+	})
+
+	// 2. Status Penanganan
+	if current == nil {
+		ui.Column(c).Fill().Center().Children(func() {
+			ui.Text(c, "PUTAR LAGU UNTUK MELIHAT LIRIK").FontSize(13).Bold().TextColor(fg)
+		})
+		return
+	}
+
+	if s.LyricsStatus == "loading" {
+		ui.Column(c).Fill().Center().Gap(6).Children(func() {
+			ui.Text(c, "MENCARI LIRIK TERSINKRONISASI...").FontSize(13).Bold().TextColor(fg)
+			ui.Text(c, "(YTMusic API > LRCLIB)").FontSize(10).TextColor(fg)
+		})
+		return
+	}
+
+	if s.LyricsStatus == "not_found" || len(s.LyricsLines) == 0 {
+		ui.Column(c).Fill().Center().Gap(6).Children(func() {
+			ui.Text(c, "LIRIK TIDAK DITEMUKAN").FontSize(14).Bold().TextColor(fg)
+			ui.Text(c, "Hanya lirik tersinkronisasi (synced lyrics) yang didukung").FontSize(10).TextColor(fg)
+		})
+		return
+	}
+
+	// 3. Tentukan Indeks Lirik Berdasarkan Waktu Pemutaran
+	currentPos := s.Engine.Position()
+	activeIdx := 0
+	for i, line := range s.LyricsLines {
+		if line.Time <= currentPos {
+			activeIdx = i
+		} else {
+			break
+		}
+	}
+
+	// 4. Logika Easing Lerp untuk Animasi Scroll
+	targetPos := float64(activeIdx)
+	diff := targetPos - s.LyricVisualPos
+
+	if math.Abs(diff) > 4.0 {
+		s.LyricVisualPos = targetPos
+	} else if math.Abs(diff) > 0.001 {
+		step := diff * 0.22
+		minStep := 0.035
+
+		if diff > 0 {
+			if step < minStep {
+				step = minStep
+			}
+			if s.LyricVisualPos >= targetPos {
+				s.LyricVisualPos = targetPos
+			} else {
+				s.LyricVisualPos += step
+			}
+		} else {
+			if step > -minStep {
+				step = -minStep
+			}
+			if s.LyricVisualPos+step <= targetPos {
+				s.LyricVisualPos = targetPos
+			} else {
+				s.LyricVisualPos += step
+			}
+		}
+
+		if s.LyricVisualPos != targetPos {
+			c.After(16 * time.Millisecond)
+		}
+	} else {
+		s.LyricVisualPos = targetPos
+	}
+
+	// 5. Warna Abu-Abu Adaptif Sesuai Mode
+	grayMuted := ui.RGB(145, 145, 145)
+	grayDim := ui.RGB(90, 90, 90)
+	if s.DarkMode {
+		grayMuted = ui.RGB(160, 160, 160)
+		grayDim = ui.RGB(85, 85, 85)
+	}
+
+	// 6. Parameter Viewport 7 Baris
+	const lineH float32 = 46
+	const viewportH float32 = 7 * lineH // 322px
+
+	baseIdx := int(math.Floor(s.LyricVisualPos))
+	frac := float32(s.LyricVisualPos - float64(baseIdx))
+
+	// Kontainer Terluar: Berada tepat di tengah layar secara vertikal & horizontal
+	ui.Column(c).Fill().Center().Children(func() {
+		// Viewport Frameless setinggi 7 baris dengan .Clip()
+		ui.Column(c).FillWidth().Height(viewportH).Clip().Children(func() {
+			// Render 8 baris (-3 sampai +4): Baris teratas menyusut seiring frac, mendorong baris bawah naik
+			for k := -3; k <= 4; k++ {
+				lineIdx := baseIdx + k
+
+				// Baris teratas menyusut tingginya dari 46px ke 0px
+				rowH := lineH
+				if k == -3 {
+					rowH = (1.0 - frac) * lineH
+				}
+
+				// Baris kosong di luar jangkauan lagu (misal pada intro atau outro)
+				if lineIdx < 0 || lineIdx >= len(s.LyricsLines) {
+					ui.Row(c).FillWidth().Height(rowH)
+					continue
+				}
+
+				line := s.LyricsLines[lineIdx]
+				displayText := line.Text
+				if displayText == "" {
+					displayText = "• • •" // Indikator jeda musik / instrumental
+				}
+
+				// Hitung jarak visual ke pusat untuk menentukan ukuran & kontras warna
+				dist := float64(lineIdx) - s.LyricVisualPos
+				absDist := math.Abs(dist)
+
+				fontSize := float32(14)
+				textColor := grayDim
+				isBold := false
+
+				if absDist < 0.6 {
+					fontSize = 24
+					textColor = fg // Hitam pekat di Light Mode, Putih murni di Dark Mode
+					isBold = true
+				} else if absDist < 1.6 {
+					fontSize = 18
+					textColor = grayMuted
+				} else if absDist < 2.6 {
+					fontSize = 16
+					textColor = grayMuted
+				}
+
+				// Render Baris Teks Lirik
+				row := ui.Row(c).FillWidth().Height(rowH).Clip().Center()
+				if rowH > 14 {
+					row.Children(func() {
+						txt := ui.Text(c, displayText).FontSize(fontSize).TextColor(textColor)
+						if isBold {
+							txt.Bold()
+						}
+					})
+				}
+
+				// Klik baris lirik untuk melompat (seek) ke waktu baris tersebut
+				if row.Clicked() {
+					dur := s.Engine.Duration()
+					if dur > 0 {
+						s.Seek(float64(line.Time) / float64(dur))
+					}
+				}
+			}
+		})
 	})
 }
 
@@ -396,7 +576,6 @@ func renderArtistsList(c *ui.Context, s *AppState, bg, fg ui.Color) {
 
 						cardBg := bg
 						cardFg := fg
-						// Efek inversi pada kartu saat hover atau saat dipilih
 						if cardBtn.Hovered() || isSelected {
 							cardBg = fg
 							cardFg = bg
@@ -543,7 +722,6 @@ func renderTracksList(c *ui.Context, s *AppState, bg, fg ui.Color) {
 
 					ui.Text(c, track.Album).Width(180).FontSize(10).TextColor(textColor)
 
-					// Tombol Play / Pause dengan inversi warna saat HOVER
 					if isSelected {
 						playIconDraw := drawPause
 						if !s.Engine.IsPlaying() {
@@ -577,14 +755,14 @@ func renderTracksList(c *ui.Context, s *AppState, bg, fg ui.Color) {
 }
 
 // -------------------------------------------------------------
-// 4. Playback Bar di Bawah
+// 4. Playback Bar di Bawah: Ikon Mikrofon di Sisi Kanan Info Lagu
 // -------------------------------------------------------------
 func renderBottomPlaybackBar(c *ui.Context, s *AppState, bg, fg, muted ui.Color) {
 	current := s.CurrentTrack()
 
 	ui.Row(c).FillWidth().Height(78).Shrink(0).Padding(10, 14).Border(1, fg).Radius(0).Background(bg).Center().Children(func() {
-		// --- KIRI: Cover Art + Info Lagu ---
-		ui.Row(c).Width(270).Center().Gap(10).Children(func() {
+		// --- KIRI: Cover Art + Info Lagu + Tombol Mikrofon ---
+		ui.Row(c).Width(310).Center().Gap(10).Children(func() {
 			var cover []byte
 			if current != nil {
 				cover = current.CoverData
@@ -601,6 +779,19 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState, bg, fg, muted ui.Color)
 				ui.Text(c, title).FontSize(12).Bold().TextColor(fg)
 				ui.Text(c, artist).FontSize(10).TextColor(fg)
 			})
+
+			// Tombol Mikrofon Vektor (Klik untuk berganti ke/dari mode lirik)
+			isLyricsMode := s.ViewMode == "lyrics"
+			if customIconButton(c, 30, 30, isLyricsMode, bg, fg, drawMic).Clicked() {
+				if s.ViewMode == "lyrics" {
+					s.ViewMode = "tracks"
+				} else {
+					s.ViewMode = "lyrics"
+					if current != nil {
+						s.LoadLyrics(*current)
+					}
+				}
+			}
 		})
 
 		// --- TENGAH: Kontrol Navigasi & Timeline Slider ---

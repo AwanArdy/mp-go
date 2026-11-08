@@ -8,13 +8,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
-
-	"music-player/internal/audio"
-	"music-player/internal/library"
-	"music-player/internal/model"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/egoist/mygo"
+	"music-player/internal/audio"
+	"music-player/internal/library"
+	"music-player/internal/model"
 )
 
 type CardItem struct {
@@ -31,10 +31,16 @@ type AppState struct {
 	Window       *mygo.Window
 
 	DarkMode       bool
-	ViewMode       string
+	ViewMode       string // "tracks", "artists", "albums", "lyrics"
 	SelectedArtist string
 	SelectedAlbum  string
 	SearchQuery    string
+
+	// State Lirik Lagu
+	LyricsLines    []library.LyricLine
+	LyricsStatus   string // "idle", "loading", "ready", "not_found"
+	LyricVisualPos float64
+	lyricsTrack    string
 
 	Volume   float64
 	Progress float64
@@ -54,6 +60,7 @@ func NewAppState() *AppState {
 		SelectedArtist: "",
 		SelectedAlbum:  "",
 		SearchQuery:    "",
+		LyricsStatus:   "idle",
 		Volume:         0.8,
 	}
 
@@ -82,6 +89,36 @@ func (s *AppState) ToggleDarkMode() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.DarkMode = !s.DarkMode
+}
+
+func (s *AppState) LoadLyrics(track model.Track) {
+	s.mu.Lock()
+	if s.lyricsTrack == track.Path && (s.LyricsStatus == "ready" || s.LyricsStatus == "loading") {
+		s.mu.Unlock()
+		return
+	}
+	s.lyricsTrack = track.Path
+	s.LyricsStatus = "loading"
+	s.LyricsLines = nil
+	s.LyricVisualPos = 0
+	s.mu.Unlock()
+
+	go func(t model.Track, dur time.Duration) {
+		lines, err := library.FetchSyncedLyrics(t.Title, t.Artist, t.Album, dur)
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.lyricsTrack != t.Path {
+			return
+		}
+		if err != nil || len(lines) == 0 {
+			s.LyricsStatus = "not_found"
+			s.LyricsLines = nil
+		} else {
+			s.LyricsStatus = "ready"
+			s.LyricsLines = lines
+			s.LyricVisualPos = 0
+		}
+	}(track, s.Engine.Duration())
 }
 
 func (s *AppState) FilteredTracks() []model.Track {
@@ -219,6 +256,13 @@ func (s *AppState) PlayTrack(track model.Track) {
 	if err := s.Engine.Play(track); err != nil {
 		log.Printf("[AUDIO ERROR] Gagal memutar %s: %v", track.Title, err)
 	}
+
+	// Jika mode lirik sedang terbuka, langsung muat lirik untuk lagu baru
+	if s.ViewMode == "lyrics" {
+		s.LoadLyrics(track)
+	} else {
+		s.lyricsTrack = ""
+	}
 }
 
 func (s *AppState) TogglePlay() {
@@ -231,7 +275,7 @@ func (s *AppState) TogglePlay() {
 
 func (s *AppState) NextTrack() {
 	tracks := s.FilteredTracks()
-	if len(s.Tracks) == 0 {
+	if len(tracks) == 0 {
 		tracks = s.Tracks
 	}
 	if len(tracks) == 0 {
@@ -264,7 +308,7 @@ func (s *AppState) NextTrack() {
 
 func (s *AppState) PrevTrack() {
 	tracks := s.FilteredTracks()
-	if len(s.Tracks) == 0 {
+	if len(tracks) == 0 {
 		tracks = s.Tracks
 	}
 	if len(tracks) == 0 {

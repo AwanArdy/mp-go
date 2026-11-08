@@ -11,47 +11,59 @@ import (
 const appFont = "Plus Jakarta Sans"
 
 // -------------------------------------------------------------
-// Token Warna M3 dengan Kontras & Outline Nyata
+// Token Warna M3 (Material 3 Expressive Tokens)
 // -------------------------------------------------------------
 type M3Theme struct {
-	Background    ui.Color // Dasar layar
-	Surface       ui.Color // Kontainer sidebar & area konten utama
-	CardBg        ui.Color // Kartu (Pure White di light mode agar pop-out)
-	CardHover     ui.Color
-	Outline       ui.Color // Batas 1px tegas antar elemen
-	Primary       ui.Color // Aksen aktif (Deep Navy Slate / Soft Ice)
-	OnPrimary     ui.Color // Teks di atas warna aksen
-	TextPrimary   ui.Color // Teks judul tajam
-	TextSecondary ui.Color // Teks artis/detail
-	SliderTrack   ui.Color
+	Background         ui.Color // Dasar layar aplikasi
+	Surface            ui.Color // Kontainer sidebar & area konten utama
+	SurfaceContainer   ui.Color // Kontainer level lebih tinggi (card, list item)
+	CardBg             ui.Color // Warna kartu default
+	CardHover          ui.Color // State hover pada kartu
+	Outline            ui.Color // Garis batas halus standar M3
+	OutlineVariant     ui.Color // Garis batas sangat halus (divider / subtle borders)
+	Primary            ui.Color // Warna aksen M3 utama (brand / active element)
+	PrimaryContainer   ui.Color // Latar belakang aksen lembut (active pill, selected item)
+	OnPrimary          ui.Color // Teks / ikon di atas Primary
+	OnPrimaryContainer ui.Color // Teks / ikon di atas PrimaryContainer
+	TextPrimary        ui.Color // Teks judul tajam kontras tinggi
+	TextSecondary      ui.Color // Teks subtitle / metadata sekunder
+	SliderTrack        ui.Color // Track slider non-aktif
 }
 
 func getM3Theme(isDark bool) M3Theme {
 	if isDark {
 		return M3Theme{
-			Background:    ui.RGB(11, 15, 23),    // Slate 950
-			Surface:       ui.RGB(20, 27, 40),    // Slate 900
-			CardBg:        ui.RGB(27, 37, 54),    // Slate 850
-			CardHover:     ui.RGB(35, 48, 71),    // Slate 800
-			Outline:       ui.RGB(46, 61, 87),    // Slate 750 (Garis pembatas tegas)
-			Primary:       ui.RGB(241, 245, 249), // Slate 100
-			OnPrimary:     ui.RGB(15, 23, 42),    // Slate 900
-			TextPrimary:   ui.RGB(248, 250, 252), // Slate 50
-			TextSecondary: ui.RGB(148, 163, 184), // Slate 400
-			SliderTrack:   ui.RGB(45, 59, 82),
+			Background:         ui.RGB(15, 17, 23),
+			Surface:            ui.RGB(23, 27, 36),
+			SurfaceContainer:   ui.RGB(32, 38, 51),
+			CardBg:             ui.RGB(28, 34, 46),
+			CardHover:          ui.RGB(40, 48, 64),
+			Outline:            ui.RGBA(148, 163, 184, 0.22),
+			OutlineVariant:     ui.RGBA(148, 163, 184, 0.12),
+			Primary:            ui.RGB(168, 199, 250), // M3 Soft Pastel Blue
+			PrimaryContainer:   ui.RGB(37, 56, 88),    // M3 Deep Blue Container
+			OnPrimary:          ui.RGB(10, 25, 50),
+			OnPrimaryContainer: ui.RGB(218, 234, 254),
+			TextPrimary:        ui.RGB(241, 245, 249),
+			TextSecondary:      ui.RGB(148, 163, 184),
+			SliderTrack:        ui.RGB(47, 57, 74),
 		}
 	}
 	return M3Theme{
-		Background:    ui.RGB(238, 242, 246), // Cool Slate 100 (Lebih pekat dari kartu)
-		Surface:       ui.RGB(245, 247, 250), // Slate 50
-		CardBg:        ui.RGB(255, 255, 255), // Pure White (Kontras nyata terhadap background)
-		CardHover:     ui.RGB(241, 245, 249), // Slate 100
-		Outline:       ui.RGB(203, 213, 225), // Slate 300 (Garis batas terlihat jelas)
-		Primary:       ui.RGB(15, 23, 42),    // Deep Navy Slate 900
-		OnPrimary:     ui.RGB(255, 255, 255),
-		TextPrimary:   ui.RGB(15, 23, 42),    // Slate 900
-		TextSecondary: ui.RGB(100, 116, 139), // Slate 500
-		SliderTrack:   ui.RGB(203, 213, 225),
+		Background:         ui.RGB(246, 248, 252), // M3 Light Background Tint
+		Surface:            ui.RGB(255, 255, 255), // Clean surface
+		SurfaceContainer:   ui.RGB(241, 245, 249), // Slate 100
+		CardBg:             ui.RGB(255, 255, 255),
+		CardHover:          ui.RGB(239, 246, 255), // Light blue tint
+		Outline:            ui.RGBA(30, 41, 59, 0.14),
+		OutlineVariant:     ui.RGBA(30, 41, 59, 0.08),
+		Primary:            ui.RGB(37, 99, 235),   // M3 Vibrant Blue 600
+		PrimaryContainer:   ui.RGB(219, 234, 254), // M3 Soft Blue Container 100
+		OnPrimary:          ui.RGB(255, 255, 255),
+		OnPrimaryContainer: ui.RGB(30, 58, 138),   // Dark Blue 900
+		TextPrimary:        ui.RGB(15, 23, 42),    // Slate 900
+		TextSecondary:      ui.RGB(100, 116, 139), // Slate 500
+		SliderTrack:        ui.RGB(226, 232, 240), // Slate 200
 	}
 }
 
@@ -64,19 +76,22 @@ func m3Text(c *ui.Context, text string) ui.Element {
 // Komponen M3 Terdefinisi
 // -------------------------------------------------------------
 
-// Navigasi pill dengan border halus
+// Navigasi pill dengan gaya Material 3 (Active pill dengan PrimaryContainer)
 func m3NavPill(c *ui.Context, label string, active bool, theme M3Theme) ui.Element {
-	btn := ui.Button(c, label).Font(appFont).Radius(20).Border(1, theme.Outline)
+	btn := ui.Button(c, label).Font(appFont).Radius(20)
 	bg := theme.CardBg
 	fg := theme.TextSecondary
 
 	if active {
-		bg = theme.Primary
-		fg = theme.OnPrimary
+		bg = theme.PrimaryContainer
+		fg = theme.OnPrimaryContainer
 		btn.Border(1, theme.Primary)
-	} else if btn.Hovered() {
-		bg = theme.CardHover
-		fg = theme.TextPrimary
+	} else {
+		btn.Border(1, theme.OutlineVariant)
+		if btn.Hovered() {
+			bg = theme.CardHover
+			fg = theme.TextPrimary
+		}
 	}
 
 	btn.Background(bg).TextColor(fg)
@@ -85,7 +100,7 @@ func m3NavPill(c *ui.Context, label string, active bool, theme M3Theme) ui.Eleme
 
 // Tombol ikon M3 dengan outline border
 func m3IconButton(c *ui.Context, size float32, active bool, theme M3Theme, drawIcon func(p *ui.Painter, r ui.Rect, fg ui.Color)) ui.Element {
-	btn := ui.Button(c, "").Width(size).Height(size).Radius(size/2).Border(1, theme.Outline)
+	btn := ui.Button(c, "").Width(size).Height(size).Radius(size/2)
 	bg := theme.CardBg
 	fg := theme.TextPrimary
 
@@ -93,8 +108,11 @@ func m3IconButton(c *ui.Context, size float32, active bool, theme M3Theme, drawI
 		bg = theme.Primary
 		fg = theme.OnPrimary
 		btn.Border(1, theme.Primary)
-	} else if btn.Hovered() {
-		bg = theme.CardHover
+	} else {
+		btn.Border(1, theme.OutlineVariant)
+		if btn.Hovered() {
+			bg = theme.CardHover
+		}
 	}
 
 	btn.Background(bg)
@@ -134,7 +152,7 @@ func m3Slider(c *ui.Context, val *float64, min, max float64, theme M3Theme) ui.E
 }
 
 func renderCoverBox(c *ui.Context, coverData []byte, size float32, radius float32, theme M3Theme) {
-	box := ui.Row(c).Width(size).Height(size).Background(theme.Background).Border(1, theme.Outline).Radius(radius).Clip().Center()
+	box := ui.Row(c).Width(size).Height(size).Shrink(0).Background(theme.SurfaceContainer).Border(1, theme.OutlineVariant).Radius(radius).Clip().Center()
 
 	if img, ok := GetOrDecodeImage(coverData); ok {
 		box.Children(func() {
@@ -326,8 +344,8 @@ func renderTopBar(c *ui.Context, s *AppState, theme M3Theme) {
 			}
 		})
 
-		// Search Box dengan Outline & Background Pure White
-		ui.Row(c).FillWidth().Height(40).Radius(20).Background(theme.CardBg).Border(1, theme.Outline).Padding(0, 14).Center().Gap(10).Children(func() {
+		// Search Box dengan Material 3 Search Bar Look
+		ui.Row(c).FillWidth().Height(40).Radius(20).Background(theme.SurfaceContainer).Border(1, theme.OutlineVariant).Padding(0, 14).Center().Gap(10).Children(func() {
 			iconBox := ui.Row(c).Width(20).Height(20).Center()
 			iconBox.Draw(func(p *ui.Painter, r ui.Rect) {
 				drawSearchIcon(p, r, theme.TextSecondary)
@@ -335,11 +353,13 @@ func renderTopBar(c *ui.Context, s *AppState, theme M3Theme) {
 
 			ui.TextInput(c, &s.SearchQuery).
 				Font(appFont).
-				Border(0, theme.CardBg).
+				Border(0, theme.SurfaceContainer).
 				Radius(0).
 				FillWidth().
 				Height(36).
-				Background(theme.CardBg).
+				Placeholder("Search songs, artists, albums...").
+				PlaceholderColor(theme.TextSecondary).
+				Background(theme.SurfaceContainer).
 				TextColor(theme.TextPrimary)
 		})
 
@@ -358,7 +378,7 @@ func renderTopBar(c *ui.Context, s *AppState, theme M3Theme) {
 // 2. Sidebar dengan Outline & Batasan Jelas
 // -------------------------------------------------------------
 func renderSidebar(c *ui.Context, s *AppState, theme M3Theme) {
-	ui.Column(c).Width(230).FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.Outline).Padding(14).Gap(10).Children(func() {
+	ui.Column(c).Width(230).FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.OutlineVariant).Padding(14).Gap(10).Children(func() {
 		m3Text(c, "LIBRARY").FontSize(11).Bold().TextColor(theme.TextSecondary)
 
 		if m3NavPill(c, "All Tracks", s.ViewMode == "tracks" && s.SelectedArtist == "" && s.SelectedAlbum == "", theme).FillWidth().Height(38).Clicked() {
@@ -371,7 +391,7 @@ func renderSidebar(c *ui.Context, s *AppState, theme M3Theme) {
 			s.ViewMode = "albums"
 		}
 
-		ui.Row(c).FillWidth().Height(1).Background(theme.Outline)
+		ui.Row(c).FillWidth().Height(1).Background(theme.OutlineVariant)
 
 		m3Text(c, "ACTIVE FILTER").FontSize(11).Bold().TextColor(theme.TextSecondary)
 		filterText := "None (All Songs)"
@@ -396,7 +416,7 @@ func renderSidebar(c *ui.Context, s *AppState, theme M3Theme) {
 // 3. Main Content dengan Outline
 // -------------------------------------------------------------
 func renderMainContent(c *ui.Context, s *AppState, theme M3Theme) {
-	ui.Column(c).Fill().FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.Outline).Padding(16).Gap(12).Children(func() {
+	ui.Column(c).Fill().FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.OutlineVariant).Padding(16).Gap(12).Children(func() {
 		switch s.ViewMode {
 		case "artists":
 			renderArtistsList(c, s, theme)
@@ -435,21 +455,23 @@ func renderArtistsList(c *ui.Context, s *AppState, theme M3Theme) {
 						card := item
 						isSelected := s.SelectedArtist == card.Name
 
-						// M3 Outlined Card: Batasan border 1px yang tegas
+						// M3 Outlined Card
 						cardBtn := ui.Button(c, "").
 							Grow(1).
 							Basis(0).
 							MinWidth(0).
 							Height(185).
-							Radius(16).
-							Border(1, theme.Outline)
+							Radius(16)
 
 						bg := theme.CardBg
 						if isSelected {
-							bg = theme.Primary
+							bg = theme.PrimaryContainer
 							cardBtn.Border(1, theme.Primary)
-						} else if cardBtn.Hovered() {
-							bg = theme.CardHover
+						} else {
+							cardBtn.Border(1, theme.OutlineVariant)
+							if cardBtn.Hovered() {
+								bg = theme.CardHover
+							}
 						}
 						cardBtn.Background(bg)
 
@@ -461,8 +483,8 @@ func renderArtistsList(c *ui.Context, s *AppState, theme M3Theme) {
 						titleColor := theme.TextPrimary
 						subColor := theme.TextSecondary
 						if isSelected {
-							titleColor = theme.OnPrimary
-							subColor = theme.OnPrimary
+							titleColor = theme.OnPrimaryContainer
+							subColor = theme.OnPrimaryContainer
 						}
 
 						cardBtn.Children(func() {
@@ -519,15 +541,17 @@ func renderAlbumsList(c *ui.Context, s *AppState, theme M3Theme) {
 							Basis(0).
 							MinWidth(0).
 							Height(185).
-							Radius(16).
-							Border(1, theme.Outline)
+							Radius(16)
 
 						bg := theme.CardBg
 						if isSelected {
-							bg = theme.Primary
+							bg = theme.PrimaryContainer
 							cardBtn.Border(1, theme.Primary)
-						} else if cardBtn.Hovered() {
-							bg = theme.CardHover
+						} else {
+							cardBtn.Border(1, theme.OutlineVariant)
+							if cardBtn.Hovered() {
+								bg = theme.CardHover
+							}
 						}
 						cardBtn.Background(bg)
 
@@ -539,8 +563,8 @@ func renderAlbumsList(c *ui.Context, s *AppState, theme M3Theme) {
 						titleColor := theme.TextPrimary
 						subColor := theme.TextSecondary
 						if isSelected {
-							titleColor = theme.OnPrimary
-							subColor = theme.OnPrimary
+							titleColor = theme.OnPrimaryContainer
+							subColor = theme.OnPrimaryContainer
 						}
 
 						cardBtn.Children(func() {
@@ -595,12 +619,17 @@ func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
 				textColor := theme.TextPrimary
 				subTextColor := theme.TextSecondary
 
-				rowBtn := ui.Button(c, "").FillWidth().Height(46).Radius(12).Border(1, theme.Outline)
+				rowBtn := ui.Button(c, "").FillWidth().Height(48).Radius(12)
 				if isSelected {
-					rowBg = theme.CardHover
+					rowBg = theme.PrimaryContainer
+					textColor = theme.OnPrimaryContainer
+					subTextColor = theme.OnPrimaryContainer
 					rowBtn.Border(1, theme.Primary)
-				} else if rowBtn.Hovered() {
-					rowBg = theme.CardHover
+				} else {
+					rowBtn.Border(1, theme.OutlineVariant)
+					if rowBtn.Hovered() {
+						rowBg = theme.CardHover
+					}
 				}
 				rowBtn.Background(rowBg)
 
@@ -610,7 +639,11 @@ func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
 						if isSelected {
 							prefix = "▶"
 						}
-						m3Text(c, prefix).Width(32).FontSize(11).Bold().TextColor(theme.Primary)
+						numColor := theme.Primary
+						if isSelected {
+							numColor = theme.OnPrimaryContainer
+						}
+						m3Text(c, prefix).Width(32).FontSize(11).Bold().TextColor(numColor)
 
 						ui.Column(c).FillWidth().Children(func() {
 							m3Text(c, track.Title).FontSize(12).Bold().TextColor(textColor)
@@ -624,12 +657,12 @@ func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
 							if !s.Engine.IsPlaying() {
 								playIcon = drawPlay
 							}
-							btn := m3IconButton(c, 30, true, theme, playIcon)
+							btn := m3IconButton(c, 32, true, theme, playIcon)
 							if btn.Clicked() {
 								s.TogglePlay()
 							}
 						} else {
-							btn := m3IconButton(c, 30, false, theme, drawPlay)
+							btn := m3IconButton(c, 32, false, theme, drawPlay)
 							if btn.Clicked() {
 								s.PlayTrack(track)
 							}
@@ -796,18 +829,18 @@ func renderLyricsView(c *ui.Context, s *AppState, theme M3Theme) {
 }
 
 // -------------------------------------------------------------
-// 4. Playback Bar M3 dengan Outline & Shadow-like Border
+// 4. Playback Bar M3 dengan Elevation Surface & Card Look
 // -------------------------------------------------------------
 func renderBottomPlaybackBar(c *ui.Context, s *AppState, theme M3Theme) {
 	current := s.CurrentTrack()
 
-	ui.Row(c).FillWidth().Height(80).Shrink(0).Radius(24).Background(theme.CardBg).Border(1, theme.Outline).Padding(10, 20).Center().Children(func() {
-		ui.Row(c).Width(300).Center().Gap(14).Children(func() {
+	ui.Row(c).FillWidth().Height(84).Shrink(0).Radius(24).Background(theme.Surface).Border(1, theme.OutlineVariant).Shadow(0, 4, 16, 0, ui.RGBA(0, 0, 0, 0.08)).Padding(10, 20).Center().Children(func() {
+		ui.Row(c).Width(320).Center().Gap(14).Children(func() {
 			var cover []byte
 			if current != nil {
 				cover = current.CoverData
 			}
-			renderCoverBox(c, cover, 54, 14, theme)
+			renderCoverBox(c, cover, 54, 12, theme)
 
 			ui.Column(c).FillWidth().Children(func() {
 				title := "Ready"
@@ -821,7 +854,7 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState, theme M3Theme) {
 			})
 
 			isLyricsMode := s.ViewMode == "lyrics"
-			if m3IconButton(c, 34, isLyricsMode, theme, drawMic).Clicked() {
+			if m3IconButton(c, 36, isLyricsMode, theme, drawMic).Clicked() {
 				if s.ViewMode == "lyrics" {
 					s.ViewMode = "tracks"
 				} else {
@@ -835,10 +868,10 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState, theme M3Theme) {
 
 		ui.Column(c).FillWidth().Center().Gap(6).Children(func() {
 			ui.Row(c).Center().Gap(12).Children(func() {
-				if m3IconButton(c, 32, s.Shuffle, theme, drawShuffle).Clicked() {
+				if m3IconButton(c, 34, s.Shuffle, theme, drawShuffle).Clicked() {
 					s.Shuffle = !s.Shuffle
 				}
-				if m3IconButton(c, 32, false, theme, drawPrev).Clicked() {
+				if m3IconButton(c, 34, false, theme, drawPrev).Clicked() {
 					s.PrevTrack()
 				}
 
@@ -846,14 +879,14 @@ func renderBottomPlaybackBar(c *ui.Context, s *AppState, theme M3Theme) {
 				if s.Engine.IsPlaying() {
 					playDraw = drawPause
 				}
-				if m3IconButton(c, 44, true, theme, playDraw).Clicked() {
+				if m3IconButton(c, 46, true, theme, playDraw).Clicked() {
 					s.TogglePlay()
 				}
 
-				if m3IconButton(c, 32, false, theme, drawNext).Clicked() {
+				if m3IconButton(c, 34, false, theme, drawNext).Clicked() {
 					s.NextTrack()
 				}
-				if m3IconButton(c, 32, s.Repeat, theme, drawRepeat).Clicked() {
+				if m3IconButton(c, 34, s.Repeat, theme, drawRepeat).Clicked() {
 					s.Repeat = !s.Repeat
 				}
 			})

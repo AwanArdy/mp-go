@@ -10,7 +10,7 @@ import (
 func TestView(t *testing.T) {
 	state := appUI.NewAppState()
 	tt := ui.NewTester(state.View, 1080, 720)
-	if !tt.HasText("MUSIC PLAYER") {
-		t.Errorf("expected MUSIC PLAYER in header, got texts %q", tt.Texts())
+	if !tt.HasText("Music") {
+		t.Errorf("expected Music in header, got texts %q", tt.Texts())
 	}
 }

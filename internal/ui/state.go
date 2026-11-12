@@ -10,11 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dhowden/tag"
-	"github.com/egoist/mygo"
 	"music-player/internal/audio"
 	"music-player/internal/library"
 	"music-player/internal/model"
+
+	"github.com/dhowden/tag"
+	"github.com/egoist/mygo"
 )
 
 type CardItem struct {
@@ -36,6 +37,10 @@ type AppState struct {
 	SelectedAlbum  string
 	SearchQuery    string
 
+	SelectedTrackPath string
+	lastClickTime     time.Time
+	lastClickPath     string
+
 	ArtistCards []CardItem
 	AlbumCards  []CardItem
 
@@ -50,6 +55,13 @@ type AppState struct {
 	IsLiked  bool
 	Shuffle  bool
 	Repeat   bool
+
+	Playlists          []model.Playlist
+	SelectedPlaylistID string
+
+	IsAddingPlaylist    bool
+	EditingPlaylistID   string
+	InlinePlaylistInput string
 }
 
 func NewAppState() *AppState {
@@ -84,6 +96,150 @@ func NewAppState() *AppState {
 	)
 
 	return app
+}
+
+func (s *AppState) StartAddPlaylist() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.IsAddingPlaylist = true
+	s.EditingPlaylistID = ""
+	s.InlinePlaylistInput = fmt.Sprintf("Playlist #%d", len(s.Playlists)+1)
+}
+
+func (s *AppState) CommitAddPlaylist() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	trimmed := strings.TrimSpace(s.InlinePlaylistInput)
+	if trimmed == "" {
+		trimmed = fmt.Sprintf("Playlist #%d", len(s.Playlists)+1)
+	}
+
+	id := fmt.Sprintf("pl_%d", time.Now().UnixNano())
+	pl := model.Playlist{
+		ID:         id,
+		Name:       trimmed,
+		TrackPaths: make([]string, 0),
+	}
+	s.Playlists = append(s.Playlists, pl)
+	s.SelectedPlaylistID = id
+	s.SelectedArtist = ""
+	s.SelectedAlbum = ""
+	s.ViewMode = "playlist"
+
+	s.IsAddingPlaylist = false
+	s.InlinePlaylistInput = ""
+}
+
+func (s *AppState) CancelInlinePlaylist() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.IsAddingPlaylist = false
+	s.EditingPlaylistID = ""
+	s.InlinePlaylistInput = ""
+}
+
+func (s *AppState) StartRenamePlaylist(id, currentName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.EditingPlaylistID = id
+	s.IsAddingPlaylist = false
+	s.InlinePlaylistInput = currentName
+}
+
+func (s *AppState) CommitRenamePlaylist() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	trimmed := strings.TrimSpace(s.InlinePlaylistInput)
+	if trimmed != "" && s.EditingPlaylistID != "" {
+		for i := range s.Playlists {
+			if s.Playlists[i].ID == s.EditingPlaylistID {
+				s.Playlists[i].Name = trimmed
+				break
+			}
+		}
+	}
+	s.EditingPlaylistID = ""
+	s.InlinePlaylistInput = ""
+}
+
+func (s *AppState) DeletePlaylist(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idx := -1
+	for i, pl := range s.Playlists {
+		if pl.ID == id {
+			idx = i
+			break
+		}
+	}
+
+	if idx != -1 {
+		s.Playlists = append(s.Playlists[:idx], s.Playlists[idx+1:]...)
+	}
+
+	if s.SelectedPlaylistID == id {
+		s.SelectedPlaylistID = ""
+		s.ViewMode = "tracks"
+	}
+	if s.EditingPlaylistID == id {
+		s.EditingPlaylistID = ""
+	}
+}
+
+func (s *AppState) GetSelectedPlaylist() *model.Playlist {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.Playlists {
+		if s.Playlists[i].ID == s.SelectedPlaylistID {
+			return &s.Playlists[i]
+		}
+	}
+	return nil
+}
+
+func (s *AppState) PlaylistTracks(pl *model.Playlist) []model.Track {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if pl == nil {
+		return nil
+	}
+
+	trackMap := make(map[string]model.Track, len(s.Tracks))
+	for _, t := range s.Tracks {
+		trackMap[t.Path] = t
+	}
+
+	var result []model.Track
+	for _, p := range pl.TrackPaths {
+		if t, ok := trackMap[p]; ok {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+func (s *AppState) GetSelectedTrack() *model.Track {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	targetPath := s.SelectedTrackPath
+	if targetPath == "" {
+		if s.CurrentIndex >= 0 && s.CurrentIndex < len(s.Tracks) {
+			return &s.Tracks[s.CurrentIndex]
+		}
+		return nil
+	}
+
+	for i := range s.Tracks {
+		if s.Tracks[i].Path == targetPath {
+			return &s.Tracks[i]
+		}
+	}
+	return nil
 }
 
 func (s *AppState) BuildLibraryCaches() {
@@ -238,12 +394,14 @@ func (s *AppState) GetAlbumCards() []CardItem {
 func (s *AppState) ClearFilter() {
 	s.SelectedArtist = ""
 	s.SelectedAlbum = ""
+	s.SelectedPlaylistID = ""
 	s.SearchQuery = ""
 	s.ViewMode = "tracks"
 }
 
 func (s *AppState) PlayTrack(track model.Track) {
 	s.mu.Lock()
+	s.SelectedTrackPath = track.Path
 	for i, t := range s.Tracks {
 		if t.Path == track.Path {
 			s.CurrentIndex = i

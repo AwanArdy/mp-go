@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"math"
+	"music-player/internal/model"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -14,20 +15,21 @@ const appFont = "Plus Jakarta Sans"
 // Token Warna M3 (Material 3 Expressive Tokens)
 // -------------------------------------------------------------
 type M3Theme struct {
-	Background         ui.Color // Dasar layar aplikasi
-	Surface            ui.Color // Kontainer sidebar & area konten utama
-	SurfaceContainer   ui.Color // Kontainer level lebih tinggi (card, list item)
-	CardBg             ui.Color // Warna kartu default
-	CardHover          ui.Color // State hover pada kartu
-	Outline            ui.Color // Garis batas halus standar M3
-	OutlineVariant     ui.Color // Garis batas sangat halus (divider / subtle borders)
-	Primary            ui.Color // Warna aksen M3 utama (brand / active element)
-	PrimaryContainer   ui.Color // Latar belakang aksen lembut (active pill, selected item)
-	OnPrimary          ui.Color // Teks / ikon di atas Primary
-	OnPrimaryContainer ui.Color // Teks / ikon di atas PrimaryContainer
-	TextPrimary        ui.Color // Teks judul tajam kontras tinggi
-	TextSecondary      ui.Color // Teks subtitle / metadata sekunder
-	SliderTrack        ui.Color // Track slider non-aktif
+	Background         ui.Color
+	Surface            ui.Color
+	SurfaceContainer   ui.Color
+	CardBg             ui.Color
+	CardHover          ui.Color
+	Outline            ui.Color
+	OutlineVariant     ui.Color
+	Primary            ui.Color
+	PrimaryContainer   ui.Color
+	OnPrimary          ui.Color
+	OnPrimaryContainer ui.Color
+	TextPrimary        ui.Color
+	TextSecondary      ui.Color
+	SliderTrack        ui.Color
+	Danger             ui.Color
 }
 
 func getM3Theme(isDark bool) M3Theme {
@@ -40,43 +42,39 @@ func getM3Theme(isDark bool) M3Theme {
 			CardHover:          ui.RGB(40, 48, 64),
 			Outline:            ui.RGBA(148, 163, 184, 0.22),
 			OutlineVariant:     ui.RGBA(148, 163, 184, 0.12),
-			Primary:            ui.RGB(168, 199, 250), // M3 Soft Pastel Blue
-			PrimaryContainer:   ui.RGB(37, 56, 88),    // M3 Deep Blue Container
+			Primary:            ui.RGB(168, 199, 250),
+			PrimaryContainer:   ui.RGB(37, 56, 88),
 			OnPrimary:          ui.RGB(10, 25, 50),
 			OnPrimaryContainer: ui.RGB(218, 234, 254),
 			TextPrimary:        ui.RGB(241, 245, 249),
 			TextSecondary:      ui.RGB(148, 163, 184),
 			SliderTrack:        ui.RGB(47, 57, 74),
+			Danger:             ui.RGB(248, 113, 113),
 		}
 	}
 	return M3Theme{
-		Background:         ui.RGB(246, 248, 252), // M3 Light Background Tint
-		Surface:            ui.RGB(255, 255, 255), // Clean surface
-		SurfaceContainer:   ui.RGB(241, 245, 249), // Slate 100
+		Background:         ui.RGB(246, 248, 252),
+		Surface:            ui.RGB(255, 255, 255),
+		SurfaceContainer:   ui.RGB(241, 245, 249),
 		CardBg:             ui.RGB(255, 255, 255),
-		CardHover:          ui.RGB(239, 246, 255), // Light blue tint
+		CardHover:          ui.RGB(239, 246, 255),
 		Outline:            ui.RGBA(30, 41, 59, 0.14),
 		OutlineVariant:     ui.RGBA(30, 41, 59, 0.08),
-		Primary:            ui.RGB(37, 99, 235),   // M3 Vibrant Blue 600
-		PrimaryContainer:   ui.RGB(219, 234, 254), // M3 Soft Blue Container 100
+		Primary:            ui.RGB(37, 99, 235),
+		PrimaryContainer:   ui.RGB(219, 234, 254),
 		OnPrimary:          ui.RGB(255, 255, 255),
-		OnPrimaryContainer: ui.RGB(30, 58, 138),   // Dark Blue 900
-		TextPrimary:        ui.RGB(15, 23, 42),    // Slate 900
-		TextSecondary:      ui.RGB(100, 116, 139), // Slate 500
-		SliderTrack:        ui.RGB(226, 232, 240), // Slate 200
+		OnPrimaryContainer: ui.RGB(30, 58, 138),
+		TextPrimary:        ui.RGB(15, 23, 42),
+		TextSecondary:      ui.RGB(100, 116, 139),
+		SliderTrack:        ui.RGB(226, 232, 240),
+		Danger:             ui.RGB(220, 38, 38),
 	}
 }
 
-// Helper teks standar Plus Jakarta Sans
 func m3Text(c *ui.Context, text string) ui.Element {
 	return ui.Text(c, text).Font(appFont)
 }
 
-// -------------------------------------------------------------
-// Komponen M3 Terdefinisi
-// -------------------------------------------------------------
-
-// Navigasi pill dengan gaya Material 3 (Active pill dengan PrimaryContainer)
 func m3NavPill(c *ui.Context, label string, active bool, theme M3Theme) ui.Element {
 	btn := ui.Button(c, label).Font(appFont).Radius(20)
 	bg := theme.CardBg
@@ -98,9 +96,8 @@ func m3NavPill(c *ui.Context, label string, active bool, theme M3Theme) ui.Eleme
 	return btn
 }
 
-// Tombol ikon M3 dengan outline border
 func m3IconButton(c *ui.Context, size float32, active bool, theme M3Theme, drawIcon func(p *ui.Painter, r ui.Rect, fg ui.Color)) ui.Element {
-	btn := ui.Button(c, "").Width(size).Height(size).Radius(size/2)
+	btn := ui.Button(c, "").Width(size).Height(size).Radius(size / 2)
 	bg := theme.CardBg
 	fg := theme.TextPrimary
 
@@ -124,7 +121,6 @@ func m3IconButton(c *ui.Context, size float32, active bool, theme M3Theme, drawI
 	return btn
 }
 
-// Slider M3
 func m3Slider(c *ui.Context, val *float64, min, max float64, theme M3Theme) ui.Element {
 	s := ui.SliderBase(c, val, min, max).Height(20).Radius(10)
 	ratio := float32((*val - min) / (max - min))
@@ -169,6 +165,57 @@ func renderCoverBox(c *ui.Context, coverData []byte, size float32, radius float3
 // -------------------------------------------------------------
 // Vektor Ikon
 // -------------------------------------------------------------
+func drawTrash(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2
+
+	// Tutup tempat sampah
+	p.Fill(ui.Rect{X: cx - 5, Y: cy - 6, W: 10, H: 1.5}, fg, 0.5)
+	p.Fill(ui.Rect{X: cx - 2, Y: cy - 7.5, W: 4, H: 1.5}, fg, 0.5)
+
+	// Bodi tempat sampah
+	p.Fill(ui.Rect{X: cx - 4, Y: cy - 4, W: 8, H: 10}, fg, 1)
+
+	// Garis vertikal di dalam bodi
+	p.Fill(ui.Rect{X: cx - 2, Y: cy - 2, W: 1, H: 6}, ui.RGB(255, 255, 255), 0)
+	p.Fill(ui.Rect{X: cx + 1, Y: cy - 2, W: 1, H: 6}, ui.RGB(255, 255, 255), 0)
+}
+
+func drawCheck(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2
+	p.Fill(ui.Rect{X: cx - 5, Y: cy, W: 2, H: 4}, fg, 0.5)
+	p.Fill(ui.Rect{X: cx - 3, Y: cy + 3, W: 3, H: 2}, fg, 0.5)
+	p.Fill(ui.Rect{X: cx, Y: cy + 1, W: 2, H: 4}, fg, 0.5)
+	p.Fill(ui.Rect{X: cx + 2, Y: cy - 3, W: 2, H: 5}, fg, 0.5)
+	p.Fill(ui.Rect{X: cx + 4, Y: cy - 5, W: 2, H: 3}, fg, 0.5)
+}
+
+func drawCross(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2
+	size := float32(5)
+	for i := float32(0); i <= size; i++ {
+		p.Fill(ui.Rect{X: cx - size/2 + i, Y: cy - size/2 + i, W: 1.5, H: 1.5}, fg, 0)
+		p.Fill(ui.Rect{X: cx + size/2 - i, Y: cy - size/2 + i, W: 1.5, H: 1.5}, fg, 0)
+	}
+}
+
+func drawPlus(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2
+	p.Fill(ui.Rect{X: cx - 5, Y: cy - 1, W: 10, H: 2}, fg, 1)
+	p.Fill(ui.Rect{X: cx - 1, Y: cy - 5, W: 2, H: 10}, fg, 1)
+}
+
+func drawPlaylistIcon(p *ui.Painter, r ui.Rect, fg ui.Color) {
+	cx := r.X + r.W/2
+	cy := r.Y + r.H/2
+	p.Fill(ui.Rect{X: cx - 6, Y: cy - 5, W: 12, H: 1.5}, fg, 0.75)
+	p.Fill(ui.Rect{X: cx - 6, Y: cy - 1, W: 12, H: 1.5}, fg, 0.75)
+	p.Fill(ui.Rect{X: cx - 6, Y: cy + 3, W: 7, H: 1.5}, fg, 0.75)
+}
+
 func drawMoon(p *ui.Painter, r ui.Rect, fg ui.Color) {
 	cx := r.X + r.W/2
 	cy := r.Y + r.H/2
@@ -344,7 +391,6 @@ func renderTopBar(c *ui.Context, s *AppState, theme M3Theme) {
 			}
 		})
 
-		// Search Box dengan Material 3 Search Bar Look
 		ui.Row(c).FillWidth().Height(40).Radius(20).Background(theme.SurfaceContainer).Border(1, theme.OutlineVariant).Padding(0, 14).Center().Gap(10).Children(func() {
 			iconBox := ui.Row(c).Width(20).Height(20).Center()
 			iconBox.Draw(func(p *ui.Painter, r ui.Rect) {
@@ -375,13 +421,13 @@ func renderTopBar(c *ui.Context, s *AppState, theme M3Theme) {
 }
 
 // -------------------------------------------------------------
-// 2. Sidebar dengan Outline & Batasan Jelas
+// 2. Sidebar: Playlist Inline (Input langsung di list + Ikon Trash)
 // -------------------------------------------------------------
 func renderSidebar(c *ui.Context, s *AppState, theme M3Theme) {
 	ui.Column(c).Width(230).FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.OutlineVariant).Padding(14).Gap(10).Children(func() {
 		m3Text(c, "LIBRARY").FontSize(11).Bold().TextColor(theme.TextSecondary)
 
-		if m3NavPill(c, "All Tracks", s.ViewMode == "tracks" && s.SelectedArtist == "" && s.SelectedAlbum == "", theme).FillWidth().Height(38).Clicked() {
+		if m3NavPill(c, "All Tracks", s.ViewMode == "tracks" && s.SelectedArtist == "" && s.SelectedAlbum == "" && s.SelectedPlaylistID == "", theme).FillWidth().Height(38).Clicked() {
 			s.ClearFilter()
 		}
 		if m3NavPill(c, "By Artists", s.ViewMode == "artists", theme).FillWidth().Height(38).Clicked() {
@@ -393,27 +439,205 @@ func renderSidebar(c *ui.Context, s *AppState, theme M3Theme) {
 
 		ui.Row(c).FillWidth().Height(1).Background(theme.OutlineVariant)
 
-		m3Text(c, "ACTIVE FILTER").FontSize(11).Bold().TextColor(theme.TextSecondary)
-		filterText := "None (All Songs)"
-		if s.SelectedArtist != "" {
-			filterText = s.SelectedArtist
-		} else if s.SelectedAlbum != "" {
-			filterText = s.SelectedAlbum
-		}
-		m3Text(c, filterText).FontSize(12).Bold().TextColor(theme.TextPrimary)
+		ui.Row(c).FillWidth().Height(22).Center().Children(func() {
+			m3Text(c, "PLAYLISTS").FontSize(11).Bold().TextColor(theme.TextSecondary)
+			ui.Row(c).FillWidth().Right(0).Children(func() {
+				m3Text(c, fmt.Sprintf("(%d)", len(s.Playlists))).FontSize(11).TextColor(theme.TextSecondary)
+			})
+		})
+
+		// Area Scroll Playlist
+		ui.Scroll(c).Fill().MinHeight(0).Children(func() {
+			ui.Column(c).FillWidth().Gap(4).Children(func() {
+				if len(s.Playlists) == 0 && !s.IsAddingPlaylist {
+					ui.Row(c).FillWidth().Padding(6, 4).Children(func() {
+						m3Text(c, "No playlists yet").FontSize(12).TextColor(theme.TextSecondary)
+					})
+				}
+
+				for _, pl := range s.Playlists {
+					playlist := pl
+					isPlActive := s.ViewMode == "playlist" && s.SelectedPlaylistID == playlist.ID
+					isEditing := s.EditingPlaylistID == playlist.ID
+
+					// 1. TAMPILAN JIKA SEDANG DI-RENAME SECARA INLINE
+					if isEditing {
+						ui.Row(c).FillWidth().Height(36).Radius(10).Background(theme.CardBg).Border(1, theme.Primary).Padding(2, 6).Center().Gap(4).Children(func() {
+							ui.TextInput(c, &s.InlinePlaylistInput).
+								Font(appFont).
+								Border(0, theme.CardBg).
+								Radius(6).
+								FillWidth().
+								Height(28).
+								Background(theme.CardBg).
+								TextColor(theme.TextPrimary)
+
+							// Tombol Simpan Centang
+							saveBtn := ui.Button(c, "").Width(22).Height(22).Radius(11).Background(theme.Primary).Border(0, theme.Primary)
+							saveBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+								drawCheck(p, r, theme.OnPrimary)
+							})
+							if saveBtn.Clicked() {
+								s.CommitRenamePlaylist()
+							}
+
+							// Tombol Batal Silang
+							cancelBtn := ui.Button(c, "").Width(22).Height(22).Radius(11).Background(theme.SurfaceContainer).Border(0, theme.SurfaceContainer)
+							cancelBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+								drawCross(p, r, theme.TextSecondary)
+							})
+							if cancelBtn.Clicked() {
+								s.CancelInlinePlaylist()
+							}
+						})
+						continue
+					}
+
+					// 2. TAMPILAN NORMAL ITEM PLAYLIST DENGAN IKON TRASH DI KANAN
+					plRow := ui.Row(c).FillWidth().Height(36).Radius(18).Center().Padding(0, 6)
+					rowBg := theme.Surface
+					txtColor := theme.TextSecondary
+
+					if isPlActive {
+						rowBg = theme.PrimaryContainer
+						txtColor = theme.OnPrimaryContainer
+						plRow.Border(1, theme.Primary)
+					} else {
+						plRow.Border(1, theme.OutlineVariant)
+						if plRow.Hovered() {
+							rowBg = theme.CardHover
+							txtColor = theme.TextPrimary
+						}
+					}
+					plRow.Background(rowBg)
+
+					// Klik Kanan pada item playlist langsung memicu rename inline
+					if plRow.RightClicked() {
+						s.SelectedPlaylistID = playlist.ID
+						s.SelectedArtist = ""
+						s.SelectedAlbum = ""
+						s.ViewMode = "playlist"
+						s.StartRenamePlaylist(playlist.ID, playlist.Name)
+					}
+
+					plRow.Children(func() {
+						// Area klik nama playlist
+						itemBtn := ui.Button(c, "").Grow(1).Basis(0).Height(34).Radius(16).Border(0, rowBg).Background(rowBg)
+						itemBtn.Children(func() {
+							ui.Row(c).Fill().Padding(0, 4).Center().Children(func() {
+								iconRow := ui.Row(c).Width(16).Height(16).Center()
+								iconRow.Draw(func(p *ui.Painter, r ui.Rect) {
+									drawPlaylistIcon(p, r, txtColor)
+								})
+
+								ui.Row(c).Width(8)
+
+								displayName := playlist.Name
+								if len([]rune(displayName)) > 11 {
+									displayName = string([]rune(displayName)[:9]) + "..."
+								}
+								m3Text(c, displayName).FontSize(12).TextColor(txtColor)
+							})
+						})
+
+						if itemBtn.Clicked() {
+							s.SelectedPlaylistID = playlist.ID
+							s.SelectedArtist = ""
+							s.SelectedAlbum = ""
+							s.ViewMode = "playlist"
+						}
+
+						if itemBtn.RightClicked() {
+							s.SelectedPlaylistID = playlist.ID
+							s.SelectedArtist = ""
+							s.SelectedAlbum = ""
+							s.ViewMode = "playlist"
+							s.StartRenamePlaylist(playlist.ID, playlist.Name)
+						}
+
+						// IKON TRASH DI SISI KANAN TOMBOL PLAYLIST
+						trashBtn := ui.Button(c, "").Width(26).Height(26).Radius(13).Border(0, rowBg).Background(rowBg)
+						trashFg := theme.TextSecondary
+						if trashBtn.Hovered() {
+							trashBtn.Background(ui.RGBA(239, 68, 68, 0.15))
+							trashFg = theme.Danger
+						}
+						trashBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+							drawTrash(p, r, trashFg)
+						})
+
+						// Sekali klik langsung menghapus tanpa konfirmasi modal
+						if trashBtn.Clicked() {
+							s.DeletePlaylist(playlist.ID)
+						}
+					})
+				}
+
+				// 3. BARIS INPUT INLINE UNTUK MEMBUAT PLAYLIST BARU
+				if s.IsAddingPlaylist {
+					ui.Row(c).FillWidth().Height(36).Radius(10).Background(theme.CardBg).Border(1, theme.Primary).Padding(2, 6).Center().Gap(4).Children(func() {
+						ui.TextInput(c, &s.InlinePlaylistInput).
+							Font(appFont).
+							Border(0, theme.CardBg).
+							Radius(6).
+							FillWidth().
+							Height(28).
+							Background(theme.CardBg).
+							TextColor(theme.TextPrimary)
+
+						saveBtn := ui.Button(c, "").Width(22).Height(22).Radius(11).Background(theme.Primary).Border(0, theme.Primary)
+						saveBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+							drawCheck(p, r, theme.OnPrimary)
+						})
+						if saveBtn.Clicked() {
+							s.CommitAddPlaylist()
+						}
+
+						cancelBtn := ui.Button(c, "").Width(22).Height(22).Radius(11).Background(theme.SurfaceContainer).Border(0, theme.SurfaceContainer)
+						cancelBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+							drawCross(p, r, theme.TextSecondary)
+						})
+						if cancelBtn.Clicked() {
+							s.CancelInlinePlaylist()
+						}
+					})
+				}
+			})
+		})
 
 		if s.SelectedArtist != "" || s.SelectedAlbum != "" || s.SearchQuery != "" {
-			if m3NavPill(c, "Clear Filter", false, theme).FillWidth().Height(32).Clicked() {
+			ui.Row(c).FillWidth().Height(1).Background(theme.OutlineVariant)
+			m3Text(c, "ACTIVE FILTER").FontSize(10).Bold().TextColor(theme.TextSecondary)
+			if m3NavPill(c, "Clear Filter", false, theme).FillWidth().Height(28).Clicked() {
 				s.ClearFilter()
 			}
 		}
 
-		ui.Column(c).Fill().MinHeight(0)
+		ui.Row(c).FillWidth().Height(1).Background(theme.OutlineVariant)
+
+		// Tombol "+ Add Playlist" di Bagian Bawah Sidebar
+		addBtn := ui.Button(c, "").FillWidth().Height(40).Radius(20).Background(theme.Primary).Border(0, theme.Primary)
+		if addBtn.Hovered() {
+			addBtn.Background(theme.PrimaryContainer)
+		}
+		addBtn.Children(func() {
+			ui.Row(c).Fill().Center().Gap(8).Children(func() {
+				iconBox := ui.Row(c).Width(16).Height(16).Center()
+				iconBox.Draw(func(p *ui.Painter, r ui.Rect) {
+					drawPlus(p, r, theme.OnPrimary)
+				})
+				m3Text(c, "Add Playlist").FontSize(12).Bold().TextColor(theme.OnPrimary)
+			})
+		})
+
+		if addBtn.Clicked() {
+			s.StartAddPlaylist()
+		}
 	})
 }
 
 // -------------------------------------------------------------
-// 3. Main Content dengan Outline
+// 3. Main Content
 // -------------------------------------------------------------
 func renderMainContent(c *ui.Context, s *AppState, theme M3Theme) {
 	ui.Column(c).Fill().FillHeight().MinHeight(0).Radius(18).Background(theme.Surface).Border(1, theme.OutlineVariant).Padding(16).Gap(12).Children(func() {
@@ -424,10 +648,55 @@ func renderMainContent(c *ui.Context, s *AppState, theme M3Theme) {
 			renderAlbumsList(c, s, theme)
 		case "lyrics":
 			renderLyricsView(c, s, theme)
+		case "playlist":
+			renderPlaylistView(c, s, theme)
 		default:
 			renderTracksList(c, s, theme)
 		}
 	})
+}
+
+// -------------------------------------------------------------
+// Detail Playlist View
+// -------------------------------------------------------------
+func renderPlaylistView(c *ui.Context, s *AppState, theme M3Theme) {
+	pl := s.GetSelectedPlaylist()
+	if pl == nil {
+		ui.Column(c).Fill().Center().Children(func() {
+			m3Text(c, "Playlist not found or deleted").FontSize(14).TextColor(theme.TextSecondary)
+		})
+		return
+	}
+
+	tracks := s.PlaylistTracks(pl)
+
+	// Playlist Header Card
+	ui.Row(c).FillWidth().Height(64).Shrink(0).Radius(14).Background(theme.SurfaceContainer).Border(1, theme.OutlineVariant).Padding(10, 16).Center().Children(func() {
+		iconBox := ui.Row(c).Width(40).Height(40).Radius(10).Background(theme.PrimaryContainer).Center()
+		iconBox.Draw(func(p *ui.Painter, r ui.Rect) {
+			drawPlaylistIcon(p, r, theme.OnPrimaryContainer)
+		})
+
+		ui.Row(c).Width(12)
+
+		ui.Column(c).FillWidth().Children(func() {
+			m3Text(c, pl.Name).FontSize(15).Bold().TextColor(theme.TextPrimary)
+			m3Text(c, fmt.Sprintf("%d songs", len(tracks))).FontSize(11).TextColor(theme.TextSecondary)
+		})
+
+		trashHeaderBtn := ui.Button(c, "").Width(34).Height(34).Radius(17).Background(theme.CardBg).Border(1, theme.OutlineVariant)
+		if trashHeaderBtn.Hovered() {
+			trashHeaderBtn.Background(ui.RGBA(239, 68, 68, 0.15))
+		}
+		trashHeaderBtn.Draw(func(p *ui.Painter, r ui.Rect) {
+			drawTrash(p, r, theme.Danger)
+		})
+		if trashHeaderBtn.Clicked() {
+			s.DeletePlaylist(pl.ID)
+		}
+	})
+
+	renderTrackTable(c, s, tracks, theme)
 }
 
 // -------------------------------------------------------------
@@ -455,7 +724,6 @@ func renderArtistsList(c *ui.Context, s *AppState, theme M3Theme) {
 						card := item
 						isSelected := s.SelectedArtist == card.Name
 
-						// M3 Outlined Card
 						cardBtn := ui.Button(c, "").
 							Grow(1).
 							Basis(0).
@@ -498,6 +766,7 @@ func renderArtistsList(c *ui.Context, s *AppState, theme M3Theme) {
 						if cardBtn.Clicked() {
 							s.SelectedArtist = card.Name
 							s.SelectedAlbum = ""
+							s.SelectedPlaylistID = ""
 							s.ViewMode = "tracks"
 						}
 					}
@@ -578,6 +847,7 @@ func renderAlbumsList(c *ui.Context, s *AppState, theme M3Theme) {
 						if cardBtn.Clicked() {
 							s.SelectedAlbum = card.Name
 							s.SelectedArtist = ""
+							s.SelectedPlaylistID = ""
 							s.ViewMode = "tracks"
 						}
 					}
@@ -594,17 +864,36 @@ func renderAlbumsList(c *ui.Context, s *AppState, theme M3Theme) {
 // -------------------------------------------------------------
 // All Tracks M3
 // -------------------------------------------------------------
-func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
-	tracks := s.FilteredTracks()
+func formatTrackDuration(s *AppState, t model.Track) string {
+	if s.CurrentTrack() != nil && s.CurrentTrack().Path == t.Path {
+		d := s.Engine.Duration()
+		if d > 0 {
+			sec := int(d.Seconds())
+			return fmt.Sprintf("%d:%02d", sec/60, sec%60)
+		}
+	}
+	if t.Duration > 0 {
+		sec := int(t.Duration.Seconds())
+		return fmt.Sprintf("%d:%02d", sec/60, sec%60)
+	}
+	return "--:--"
+}
 
-	ui.Row(c).FillWidth().Height(26).Shrink(0).Center().Children(func() {
-		m3Text(c, fmt.Sprintf("Tracks (%d)", len(tracks))).FontSize(14).Bold().TextColor(theme.TextPrimary)
+func renderTrackTable(c *ui.Context, s *AppState, tracks []model.Track, theme M3Theme) {
+	// 1. HEADER TABEL (Track, Title, Artist, Album, Time)
+	ui.Row(c).FillWidth().Height(32).Radius(8).Background(theme.SurfaceContainer).Border(1, theme.OutlineVariant).Padding(0, 12).Center().Children(func() {
+		m3Text(c, "#").Width(44).FontSize(11).Bold().TextColor(theme.TextSecondary)
+		m3Text(c, "Title").Grow(1).Basis(0).MinWidth(0).FontSize(11).Bold().TextColor(theme.TextSecondary)
+		m3Text(c, "Artist").Width(190).FontSize(11).Bold().TextColor(theme.TextSecondary)
+		m3Text(c, "Album").Width(210).FontSize(11).Bold().TextColor(theme.TextSecondary)
+		m3Text(c, "Time").Width(55).Right(0).FontSize(11).Bold().TextColor(theme.TextSecondary)
 	})
 
+	// 2. DAFTAR BARIS TABEL
 	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
-		ui.Column(c).FillWidth().Gap(6).Children(func() {
+		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			if len(tracks) == 0 {
-				ui.Row(c).Fill().Center().Children(func() {
+				ui.Row(c).FillWidth().Height(80).Center().Children(func() {
 					m3Text(c, "No tracks found").FontSize(13).TextColor(theme.TextSecondary)
 				})
 				return
@@ -612,70 +901,83 @@ func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
 
 			for idx, t := range tracks {
 				track := t
-				isSelected := s.CurrentTrack() != nil && s.CurrentTrack().Path == track.Path
 				rowNum := idx + 1
+				isPlaying := s.CurrentTrack() != nil && s.CurrentTrack().Path == track.Path
+				isSelected := s.SelectedTrackPath == track.Path || (s.SelectedTrackPath == "" && isPlaying)
 
-				rowBg := theme.CardBg
+				rowBg := theme.Surface
 				textColor := theme.TextPrimary
 				subTextColor := theme.TextSecondary
 
-				rowBtn := ui.Button(c, "").FillWidth().Height(48).Radius(12)
+				rowBtn := ui.Button(c, "").FillWidth().Height(34).Radius(6).Border(0, rowBg)
+
 				if isSelected {
 					rowBg = theme.PrimaryContainer
 					textColor = theme.OnPrimaryContainer
 					subTextColor = theme.OnPrimaryContainer
 					rowBtn.Border(1, theme.Primary)
-				} else {
-					rowBtn.Border(1, theme.OutlineVariant)
-					if rowBtn.Hovered() {
-						rowBg = theme.CardHover
-					}
+				} else if rowBtn.Hovered() {
+					rowBg = theme.CardHover
 				}
 				rowBtn.Background(rowBg)
 
 				rowBtn.Children(func() {
-					ui.Row(c).Fill().Padding(4, 14).Center().Children(func() {
+					ui.Row(c).Fill().Padding(0, 12).Center().Children(func() {
+						// Kolom 1: No / Track
 						prefix := fmt.Sprintf("%02d", rowNum)
-						if isSelected {
-							prefix = "▶"
-						}
-						numColor := theme.Primary
-						if isSelected {
-							numColor = theme.OnPrimaryContainer
-						}
-						m3Text(c, prefix).Width(32).FontSize(11).Bold().TextColor(numColor)
-
-						ui.Column(c).FillWidth().Children(func() {
-							m3Text(c, track.Title).FontSize(12).Bold().TextColor(textColor)
-							m3Text(c, track.Artist).FontSize(10).TextColor(subTextColor)
-						})
-
-						m3Text(c, track.Album).Width(180).FontSize(11).TextColor(subTextColor)
-
-						if isSelected {
-							playIcon := drawPause
-							if !s.Engine.IsPlaying() {
-								playIcon = drawPlay
-							}
-							btn := m3IconButton(c, 32, true, theme, playIcon)
-							if btn.Clicked() {
-								s.TogglePlay()
-							}
-						} else {
-							btn := m3IconButton(c, 32, false, theme, drawPlay)
-							if btn.Clicked() {
-								s.PlayTrack(track)
+						numColor := subTextColor
+						if isPlaying {
+							prefix = "▶ " + prefix
+							numColor = theme.Primary
+							if isSelected {
+								numColor = theme.OnPrimaryContainer
 							}
 						}
+						m3Text(c, prefix).Width(44).FontSize(11).Bold().TextColor(numColor)
+
+						// Kolom 2: Title
+						titleTxt := m3Text(c, track.Title).Grow(1).Basis(0).MinWidth(0).FontSize(12).TextColor(textColor)
+						if isPlaying {
+							titleTxt.Bold()
+						}
+
+						// Kolom 3: Artist
+						m3Text(c, track.Artist).Width(190).FontSize(11).TextColor(subTextColor)
+
+						// Kolom 4: Album
+						m3Text(c, track.Album).Width(210).FontSize(11).TextColor(subTextColor)
+
+						// Kolom 5: Time
+						m3Text(c, formatTrackDuration(s, track)).Width(55).Right(0).FontSize(11).TextColor(subTextColor)
 					})
 				})
 
+				// Double-Click: jeda klik < 350ms langsung memutar lagu
 				if rowBtn.Clicked() {
-					s.PlayTrack(track)
+					now := time.Now()
+					if s.lastClickPath == track.Path && now.Sub(s.lastClickTime) < 350*time.Millisecond {
+						s.PlayTrack(track)
+						s.lastClickTime = time.Time{}
+						s.lastClickPath = ""
+					} else {
+						s.SelectedTrackPath = track.Path
+						s.lastClickTime = now
+						s.lastClickPath = track.Path
+					}
 				}
 			}
 		})
 	})
+}
+
+func renderTracksList(c *ui.Context, s *AppState, theme M3Theme) {
+	tracks := s.FilteredTracks()
+
+	ui.Row(c).FillWidth().Height(24).Shrink(0).Center().Children(func() {
+		m3Text(c, fmt.Sprintf("Tracks (%d items)", len(tracks))).FontSize(13).Bold().TextColor(theme.TextPrimary)
+	})
+
+	renderTrackTable(c, s, tracks, theme)
 }
 
 // -------------------------------------------------------------
@@ -829,12 +1131,12 @@ func renderLyricsView(c *ui.Context, s *AppState, theme M3Theme) {
 }
 
 // -------------------------------------------------------------
-// 4. Playback Bar M3 dengan Elevation Surface & Card Look
+// 4. Playback Bar M3
 // -------------------------------------------------------------
 func renderBottomPlaybackBar(c *ui.Context, s *AppState, theme M3Theme) {
 	current := s.CurrentTrack()
 
-	ui.Row(c).FillWidth().Height(84).Shrink(0).Radius(24).Background(theme.Surface).Border(1, theme.OutlineVariant).Shadow(0, 4, 16, 0, ui.RGBA(0, 0, 0, 0.08)).Padding(10, 20).Center().Children(func() {
+	ui.Row(c).FillWidth().Height(84).Shrink(0).Radius(24).Background(theme.Surface).Border(1, theme.OutlineVariant).Padding(10, 20).Center().Children(func() {
 		ui.Row(c).Width(320).Center().Gap(14).Children(func() {
 			var cover []byte
 			if current != nil {

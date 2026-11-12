@@ -13,7 +13,7 @@ func main() {
 
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{
-			Title:     "GNOME Music Player",
+			Title:     "Music",
 			Width:     1080,
 			Height:    720,
 			Frameless: true,

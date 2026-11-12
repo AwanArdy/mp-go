@@ -70,7 +70,7 @@ func NewAppState() *AppState {
 		Tracks:         tracks,
 		CurrentIndex:   -1,
 		Engine:         audio.NewEngine(),
-		DarkMode:       false,
+		DarkMode:       true,
 		ViewMode:       "tracks",
 		SelectedArtist: "",
 		SelectedAlbum:  "",
@@ -319,7 +319,7 @@ func (s *AppState) SetWindow(w *mygo.Window) {
 func (s *AppState) ToggleDarkMode() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.DarkMode = !s.DarkMode
+	s.DarkMode = true
 }
 
 func (s *AppState) LoadLyrics(track model.Track) {
